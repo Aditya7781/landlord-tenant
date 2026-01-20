@@ -1,4 +1,4 @@
-import { createTheme, ThemeOptions } from '@mui/material/styles';
+import { createTheme, ThemeOptions } from "@mui/material/styles";
 
 const baseTheme: ThemeOptions = {
   typography: {
@@ -9,7 +9,7 @@ const baseTheme: ThemeOptions = {
     h4: { fontWeight: 600 },
     h5: { fontWeight: 600 },
     h6: { fontWeight: 600 },
-    button: { textTransform: 'none', fontWeight: 600 },
+    button: { textTransform: "none", fontWeight: 600 },
   },
   shape: {
     borderRadius: 12,
@@ -19,7 +19,7 @@ const baseTheme: ThemeOptions = {
       styleOverrides: {
         root: {
           borderRadius: 8,
-          padding: '8px 16px',
+          padding: "8px 16px",
         },
       },
     },
@@ -27,7 +27,7 @@ const baseTheme: ThemeOptions = {
       styleOverrides: {
         root: {
           borderRadius: 16,
-          boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)',
+          boxShadow: "0 4px 20px 0 rgba(0,0,0,0.05)",
         },
       },
     },
@@ -37,18 +37,18 @@ const baseTheme: ThemeOptions = {
 export const lightTheme = createTheme({
   ...baseTheme,
   palette: {
-    mode: 'light',
+    mode: "light",
     primary: {
-      main: '#6366f1', // Indigo
-      light: '#818cf8',
-      dark: '#4f46e5',
+      main: "#6366f1", // Indigo
+      light: "#818cf8",
+      dark: "#4f46e5",
     },
     secondary: {
-      main: '#ec4899', // Pink
+      main: "#ec4899", // Pink
     },
     background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
+      default: "#f8fafc",
+      paper: "#ffffff",
     },
   },
 });
@@ -56,18 +56,20 @@ export const lightTheme = createTheme({
 export const darkTheme = createTheme({
   ...baseTheme,
   palette: {
-    mode: 'dark',
+    mode: "dark",
     primary: {
-      main: '#818cf8',
-      light: '#a5b4fc',
-      dark: '#6366f1',
+      main: "#818cf8",
+      light: "#a5b4fc",
+      dark: "#6366f1",
     },
     secondary: {
-      main: '#f472b6',
+      main: "#f472b6",
     },
     background: {
-      default: '#0f172a',
-      paper: '#1e293b',
+      default: "#0f172a",
+      paper: "#1e293b",
     },
   },
 });
+
+export default lightTheme;

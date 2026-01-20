@@ -1,35 +1,39 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { lightTheme, darkTheme } from '@/theme/theme';
-import { useMediaQuery } from '@mui/material';
+import * as React from "react";
+import { CacheProvider } from "@emotion/react";
+import createCache from "@emotion/cache";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { useMediaQuery } from "@mui/material";
+import { lightTheme, darkTheme } from "@/theme/theme";
 
-export default function ThemeRegistry({ children }: { children: React.ReactNode }) {
-    // Setting noSsr: true ensures this returns the default value (false) 
-    // during SSR and hydration, matching the server-side theme.
-    const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)', { noSsr: true });
+/* ONE shared cache */
+const emotionCache = createCache({
+  key: "mui",
+  prepend: true, 
+});
 
-    const [mounted, setMounted] = React.useState(false);
-    React.useEffect(() => {
-        setMounted(true);
-    }, []);
+export default function ThemeRegistry({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)", {
+    noSsr: true,
+  });
 
-    const theme = React.useMemo(
-        () => (prefersDarkMode ? darkTheme : lightTheme),
-        [prefersDarkMode]
-    );
+  const theme = React.useMemo(
+    () => (prefersDarkMode ? darkTheme : lightTheme),
+    [prefersDarkMode],
+  );
 
-    return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            {/* Prevent flicker by only showing content after theme is resolved 
-                or just render normally if you prefer immediate visibility */}
-            {/* Use a native div instead of Box to avoid Emotion style injection during hydration */}
-            <div style={{ visibility: mounted ? 'visible' : 'hidden' }}>
-                {children}
-            </div>
-        </ThemeProvider>
-    );
+  return (
+    <CacheProvider value={emotionCache}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
+    </CacheProvider>
+  );
 }

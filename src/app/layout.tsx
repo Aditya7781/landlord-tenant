@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import ThemeRegistry from "@/components/shared/ThemeRegistry";
+import EmotionCacheProvider from "@/lib/emotion-cache";
+import { HostelProvider } from "@/context/HostelContext";
+import { mockApi } from "@/services/mockApi";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -10,17 +13,25 @@ export const metadata: Metadata = {
   description: "Modern web-based hostel and lodge management system",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  const rooms = await mockApi.getRooms();
+  const users = await mockApi.getUsers();
+
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ThemeRegistry>
-          {children}
-        </ThemeRegistry>
+        {/* 🔴 Emotion MUST be outermost */}
+        <EmotionCacheProvider>
+          <ThemeRegistry>
+            <HostelProvider initialRooms={rooms} initialUsers={users}>
+              {children}
+            </HostelProvider>
+          </ThemeRegistry>
+        </EmotionCacheProvider>
       </body>
     </html>
   );
