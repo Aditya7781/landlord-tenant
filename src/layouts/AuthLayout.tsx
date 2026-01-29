@@ -2,13 +2,7 @@
 
 import React from "react";
 import { Box, Container, Paper, Typography } from "@mui/material";
-import dynamic from "next/dynamic";
-
-/* 👇 client-only motion.div */
-const MotionDiv = dynamic(
-  () => import("framer-motion").then((mod) => mod.motion.div),
-  { ssr: false },
-);
+import { motion } from "framer-motion";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -33,7 +27,7 @@ export default function AuthLayout({
       }}
     >
       <Container maxWidth="sm">
-        <MotionDiv
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -65,7 +59,7 @@ export default function AuthLayout({
 
             {children}
           </Paper>
-        </MotionDiv>
+        </motion.div>
       </Container>
     </Box>
   );

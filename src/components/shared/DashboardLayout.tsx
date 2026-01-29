@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Drawer,
@@ -29,6 +29,7 @@ import {
 } from "@mui/icons-material";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { clearSession, validateSession } from "@/utils/auth-utils";
 
 const drawerWidth = 280;
 
@@ -60,6 +61,75 @@ export default function DashboardLayout({
   // ✅ Mobile-only drawer state (NO syncing, NO effects)
   const [open, setOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const backGuardRef = React.useRef(false);
+
+  // Validate session on mount
+  useEffect(() => {
+    if (!validateSession()) {
+      router.push("/login");
+    }
+  }, [router]);
+
+  // Attach popstate listener to prompt logout on dashboard back,
+  // or navigate to dashboard from other protected pages.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!validateSession()) return;
+    const isDashboard =
+      pathname === "/user/dashboard" || pathname === "/admin/dashboard";
+
+    // When on dashboard, push a marker state so back triggers popstate
+    if (isDashboard) {
+      try {
+        window.history.pushState({ dashboardGuard: true }, "", pathname);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const onPopState = (e: PopStateEvent) => {
+      if (isDashboard) {
+        // ignore immediate consecutive back presses
+        if (backGuardRef.current) {
+          try {
+            window.history.pushState({ dashboardGuard: true }, "", pathname);
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
+
+        const shouldLogout = window.confirm("Do you want to logout?");
+        if (shouldLogout) {
+          clearSession();
+          router.push("/login");
+        } else {
+          // keep user on dashboard by restoring our marker state
+          try {
+            window.history.pushState({ dashboardGuard: true }, "", pathname);
+          } catch {
+            router.replace(pathname);
+          }
+          // set short-lived guard to prevent immediate second back
+          backGuardRef.current = true;
+          window.setTimeout(() => {
+            backGuardRef.current = false;
+          }, 1500);
+        }
+        return;
+      }
+
+      // Non-dashboard pages: back should take user to their dashboard
+      const dashboardPath =
+        pathname && pathname.startsWith("/admin")
+          ? "/admin/dashboard"
+          : "/user/dashboard";
+      router.push(dashboardPath);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [pathname, router]);
 
   const handleDrawerToggle = () => {
     setOpen((prev) => !prev);
@@ -74,8 +144,7 @@ export default function DashboardLayout({
   };
 
   const handleLogout = () => {
-    document.cookie =
-      "session_role=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    clearSession();
     router.push("/login");
   };
 
@@ -170,6 +239,7 @@ export default function DashboardLayout({
 
   return (
     <Box
+      suppressHydrationWarning
       sx={{
         display: "flex",
         minHeight: "100vh",

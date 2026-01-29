@@ -2,101 +2,160 @@
 
 import React from 'react';
 import {
-    Box,
-    Typography,
-    Paper,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemIcon,
-    Divider,
-    Button
+  Box,
+  Typography,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Divider,
+  Button,
+  Chip,
 } from '@mui/material';
 import {
-    Info as InfoIcon,
-    Warning as WarningIcon,
-    Schedule as ScheduleIcon,
-    CheckCircle as ReadIcon
+  Info as InfoIcon,
+  Warning as WarningIcon,
+  Payment as PaymentIcon,
+  CheckCircle as ReadIcon,
 } from '@mui/icons-material';
-import { mockApi, AppNotification } from '@/services/mockApi';
-import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import { motion, AnimatePresence } from 'framer-motion';
 
+type ApiNotification = {
+  SK: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+  paymentLink?: string;
+};
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleString();
+}
+
+function getType(n: ApiNotification) {
+  if (n.paymentLink) return 'payment';
+  if (n.title.toLowerCase().includes('issue')) return 'alert';
+  return 'info';
+}
+
 export default function UserNotifications() {
-    const [notifications, setNotifications] = React.useState<AppNotification[]>([]);
-    const [loading, setLoading] = React.useState(true);
+  const [notifications, setNotifications] = React.useState<ApiNotification[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-    React.useEffect(() => {
-        mockApi.getNotifications().then(data => {
-            setNotifications(data);
-            setLoading(false);
-        });
-    }, []);
+  React.useEffect(() => {
+    // ✅ CORRECT API (no query param)
+    fetch('/api/notifications')
+      .then(res => res.json())
+      .then(data => {
+        setNotifications(data.notifications || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
-    if (loading) return <Box sx={{ p: 4 }}><TableSkeleton /></Box>;
-
+  if (loading) {
     return (
-        <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 800 }}>Notifications</Typography>
-                    <Typography color="text.secondary">Stay updated with the latest news from Saraswati Lodge</Typography>
-                </Box>
-                <Button variant="text" startIcon={<ReadIcon />}>Mark all as read</Button>
-            </Box>
-
-            <Paper sx={{ borderRadius: 4, overflow: 'hidden' }}>
-                <AnimatePresence>
-                    <List disablePadding>
-                        {notifications.map((notif, index) => (
-                            <motion.div
-                                key={notif.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                            >
-                                <ListItem
-                                    sx={{
-                                        py: 3,
-                                        px: 4,
-                                        borderLeft: '4px solid',
-                                        borderColor: notif.type === 'alert' ? 'error.main' : notif.type === 'reminder' ? 'warning.main' : 'primary.main',
-                                        bgcolor: index % 2 === 0 ? 'transparent' : 'action.hover',
-                                        '&:hover': { bgcolor: 'action.selected' }
-                                    }}
-                                >
-                                    <ListItemIcon sx={{ minWidth: 56 }}>
-                                        <Box
-                                            sx={{
-                                                p: 1.5,
-                                                borderRadius: 2,
-                                                bgcolor: notif.type === 'alert' ? 'error.light' : notif.type === 'reminder' ? 'warning.light' : 'primary.light',
-                                                color: 'white'
-                                            }}
-                                        >
-                                            {notif.type === 'alert' ? <WarningIcon /> : notif.type === 'reminder' ? <ScheduleIcon /> : <InfoIcon />}
-                                        </Box>
-                                    </ListItemIcon>
-                                    <ListItemText
-                                        primary={
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                                                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{notif.title}</Typography>
-                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>{notif.date}</Typography>
-                                            </Box>
-                                        }
-                                        secondary={
-                                            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                                                {notif.message}
-                                            </Typography>
-                                        }
-                                    />
-                                </ListItem>
-                                {index < notifications.length - 1 && <Divider />}
-                            </motion.div>
-                        ))}
-                    </List>
-                </AnimatePresence>
-            </Paper>
-        </Box>
+      <Box sx={{ p: 4 }}>
+        <Typography>Loading notifications...</Typography>
+      </Box>
     );
+  }
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Notifications
+          </Typography>
+          <Typography color="text.secondary">
+            Stay updated with the latest updates
+          </Typography>
+        </Box>
+        <Button startIcon={<ReadIcon />}>Mark all as read</Button>
+      </Box>
+
+      <Paper sx={{ borderRadius: 4 }}>
+        <List disablePadding>
+          <AnimatePresence>
+            {notifications.map((notif, index) => {
+              const type = getType(notif);
+
+              return (
+                <motion.div
+                  key={notif.SK}
+                  initial={{ opacity: 0, x: -15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <ListItem
+                    sx={{
+                      px: 4,
+                      py: 3,
+                      borderLeft: '4px solid',
+                      borderColor:
+                        type === 'payment'
+                          ? 'success.main'
+                          : type === 'alert'
+                          ? 'error.main'
+                          : 'primary.main',
+                    }}
+                  >
+                    <ListItemIcon>
+                      {type === 'payment' ? (
+                        <PaymentIcon color="success" />
+                      ) : type === 'alert' ? (
+                        <WarningIcon color="error" />
+                      ) : (
+                        <InfoIcon color="primary" />
+                      )}
+                    </ListItemIcon>
+
+                    <ListItemText
+                      primary={
+                        <Box component="span" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography component="span" fontWeight={700}>
+                            {notif.title}
+                          </Typography>
+                          <Typography component="span" variant="caption">
+                            {formatDate(notif.createdAt)}
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={
+                        <>
+                          <Typography component="span" display="block">
+                            {notif.message}
+                          </Typography>
+
+                          {notif.paymentLink && (
+                            <Box component="span" display="block" mt={1}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                href={notif.paymentLink}
+                                target="_blank"
+                              >
+                                Pay Now
+                              </Button>
+                            </Box>
+                          )}
+                        </>
+                      }
+                    />
+
+                    {!notif.read && <Chip label="NEW" size="small" />}
+                  </ListItem>
+
+                  {index < notifications.length - 1 && <Divider />}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </List>
+      </Paper>
+    </Box>
+  );
 }

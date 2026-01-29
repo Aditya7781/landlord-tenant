@@ -8,53 +8,105 @@ import {
     Grid,
     Avatar,
     Chip,
-    Divider,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemIcon
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Alert,
 } from '@mui/material';
 import {
-    Hotel as HotelIcon,
     MeetingRoom as RoomIcon,
-    CalendarToday as DateIcon,
+    Phone as PhoneIcon,
+    Assignment as AssignmentIcon,
     VerifiedUser as VerifiedIcon,
     Notifications as NotificationIcon,
-    FiberManualRecord as BulletIcon
 } from '@mui/icons-material';
-import { mockApi, User, AppNotification } from '@/services/mockApi';
 import { DashboardSkeleton } from '@/components/shared/SkeletonLoader';
 import { motion } from 'framer-motion';
 
+// --- Types from dev/my?query=dashboard ---
+interface DashboardAssignment {
+    roomNo: string;
+    bedIndex: number;
+    bedName: string;
+    amount: number;
+    dueDate: string;
+    assignedAt: string;
+    currentAmount: number;
+    currentDueDate: string;
+}
+
+interface DashboardResponse {
+    email: string;
+    basicInfo?: { name?: string; phone?: string };
+    assignments: DashboardAssignment[];
+    summary: { totalAssignments: number; rooms: number };
+}
+
+const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return '—';
+    try {
+        return new Date(dateString).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+        });
+    } catch {
+        return '—';
+    }
+};
+
+const formatAmount = (n: number) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
 export default function UserDashboard() {
-    const [data, setData] = React.useState<{
-        user: User;
-        notifications: AppNotification[];
-    } | null>(null);
+    const [data, setData] = React.useState<DashboardResponse | null>(null);
     const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
 
     React.useEffect(() => {
         const fetchData = async () => {
-            const [users, notifications] = await Promise.all([
-                mockApi.getUsers(),
-                mockApi.getNotifications()
-            ]);
-            // For mock purposes, we'll assume the first user is the logged in user
-            setData({ user: users[0], notifications });
-            setLoading(false);
+            try {
+                const res = await fetch('/api/my?query=dashboard', { credentials: 'include' });
+                const json = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(json.message || 'Failed to load dashboard');
+                }
+                setData(json);
+            } catch (e) {
+                setError(e instanceof Error ? e.message : 'Something went wrong');
+            } finally {
+                setLoading(false);
+            }
         };
         fetchData();
     }, []);
 
-    if (loading || !data) return <DashboardSkeleton />;
+    if (loading) return <DashboardSkeleton />;
+    if (error) {
+        return (
+            <Box>
+                <Alert severity="error" sx={{ mb: 3 }}>
+                    {error}
+                </Alert>
+            </Box>
+        );
+    }
+    if (!data) return null;
 
-    const { user, notifications } = data;
+    const { email, basicInfo = {}, assignments = [], summary = { totalAssignments: 0, rooms: 0 } } = data;
+    const name = basicInfo?.name || email.split('@')[0] || 'Guest';
+    const phone = basicInfo?.phone || 'N/A';
+    const status = assignments.length > 0 ? 'Active' : 'Pending';
 
     const infoCards = [
-        { label: 'Room Number', value: user.room, icon: <RoomIcon color="primary" /> },
-        { label: 'Bed Number', value: user.bed, icon: <HotelIcon color="secondary" /> },
-        { label: 'Entry Date', value: user.entryDate || 'N/A', icon: <DateIcon color="success" /> },
-        { label: 'Status', value: user.status, icon: <VerifiedIcon color="info" /> },
+        { label: 'Total Assignments', value: String(summary.totalAssignments), icon: <AssignmentIcon color="primary" /> },
+        { label: 'Rooms', value: String(summary.rooms), icon: <RoomIcon color="secondary" /> },
+        { label: 'Phone', value: phone, icon: <PhoneIcon color="success" /> },
+        { label: 'Status', value: status, icon: <VerifiedIcon color="info" /> },
     ];
 
     return (
@@ -66,14 +118,16 @@ export default function UserDashboard() {
                         height: 80,
                         bgcolor: 'primary.main',
                         fontSize: '2rem',
-                        boxShadow: 3
+                        boxShadow: 3,
                     }}
                 >
-                    {user.name[0]}
+                    {name[0]}
                 </Avatar>
                 <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 800 }}>Welcome, {user.name}!</Typography>
-                    <Typography color="text.secondary">Resident of Saraswati Lodge • {user.email}</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 800 }}>
+                        Welcome, {name}!
+                    </Typography>
+                    <Typography color="text.secondary">{email}</Typography>
                 </Box>
             </Box>
 
@@ -89,11 +143,15 @@ export default function UserDashboard() {
                                 <Box sx={{ mb: 1.5, display: 'inline-flex', p: 1, borderRadius: 2, bgcolor: 'action.hover' }}>
                                     {card.icon}
                                 </Box>
-                                <Typography variant="body2" color="text.secondary" gutterBottom>{card.label}</Typography>
+                                <Typography variant="body2" color="text.secondary" gutterBottom>
+                                    {card.label}
+                                </Typography>
                                 <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                     {card.label === 'Status' ? (
                                         <Chip label={card.value} color="success" size="small" sx={{ fontWeight: 600 }} />
-                                    ) : card.value}
+                                    ) : (
+                                        card.value
+                                    )}
                                 </Typography>
                             </Paper>
                         </motion.div>
@@ -102,22 +160,41 @@ export default function UserDashboard() {
 
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Paper sx={{ p: 4, borderRadius: 4, height: '100%' }}>
-                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>Quick Actions & Info</Typography>
-                        <Divider sx={{ mb: 3 }} />
-                        <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 3, cursor: 'pointer', transition: '0.2s', '&:hover': { bgcolor: 'action.selected' } }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>WiFi Details</Typography>
-                                    <Typography variant="body2" color="text.secondary">SSID: Saraswati_Lodge_5G</Typography>
-                                </Box>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 3, cursor: 'pointer', transition: '0.2s', '&:hover': { bgcolor: 'action.selected' } }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Maintenance</Typography>
-                                    <Typography variant="body2" color="text.secondary">Request a fix for your room</Typography>
-                                </Box>
-                            </Grid>
-                        </Grid>
+                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
+                            My Assignments
+                        </Typography>
+                        {assignments.length === 0 ? (
+                            <Typography color="text.secondary">
+                                No assignments yet. Your room and bed allocations will appear here.
+                            </Typography>
+                        ) : (
+                            <TableContainer>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow sx={{ bgcolor: 'action.hover' }}>
+                                            <TableCell sx={{ fontWeight: 700 }}>Room</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>Bed</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>Due Date</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>Current Due</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>Assigned At</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {assignments.map((a, idx) => (
+                                            <TableRow key={`${a.roomNo}-${a.bedName}-${idx}`} hover>
+                                                <TableCell sx={{ fontWeight: 600 }}>{a.roomNo}</TableCell>
+                                                <TableCell>{a.bedName}</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>{formatAmount(a.currentAmount)}</TableCell>
+                                                <TableCell>{formatDate(a.dueDate)}</TableCell>
+                                                <TableCell>{formatDate(a.currentDueDate)}</TableCell>
+                                                <TableCell>{formatDate(a.assignedAt)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
                     </Paper>
                 </Grid>
 
@@ -125,26 +202,13 @@ export default function UserDashboard() {
                     <Paper sx={{ p: 4, borderRadius: 4, height: '100%' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
                             <NotificationIcon color="primary" />
-                            <Typography variant="h6" sx={{ fontWeight: 700 }}>Latest Updates</Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Latest Updates
+                            </Typography>
                         </Box>
-                        <List disablePadding>
-                            {notifications.slice(0, 3).map((notif, i) => (
-                                <Box key={notif.id}>
-                                    <ListItem disableGutters alignItems="flex-start">
-                                        <ListItemIcon sx={{ minWidth: 32, mt: 0.5 }}>
-                                            <BulletIcon sx={{ fontSize: 12, color: 'primary.main' }} />
-                                        </ListItemIcon>
-                                        <ListItemText
-                                            primary={notif.title}
-                                            secondary={notif.message}
-                                            primaryTypographyProps={{ variant: 'subtitle2', fontWeight: 600 }}
-                                            secondaryTypographyProps={{ variant: 'caption', sx: { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } }}
-                                        />
-                                    </ListItem>
-                                    {i < notifications.length - 1 && <Divider component="li" sx={{ my: 1, opacity: 0.5 }} />}
-                                </Box>
-                            ))}
-                        </List>
+                        <Typography color="text.secondary">
+                            No updates at the moment. Notifications will appear here when available.
+                        </Typography>
                     </Paper>
                 </Grid>
             </Grid>

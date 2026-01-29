@@ -7,7 +7,7 @@ import React from "react";
 export function createEmotionCache() {
   return createCache({
     key: "mui",
-    prepend: true, // 🔴 REQUIRED to avoid hydration mismatch
+    prepend: true, // ensure stable order on server and client
   });
 }
 

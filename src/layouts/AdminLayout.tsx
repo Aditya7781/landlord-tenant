@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import DashboardLayout from "@/components/shared/DashboardLayout";
+import dynamic from "next/dynamic";
 import {
   Dashboard as DashboardIcon,
   People as PeopleIcon,
@@ -15,8 +15,13 @@ const adminMenuItems = [
   { text: "User Management", icon: <PeopleIcon />, path: "/admin/users" },
   { text: "Room & Bed", icon: <HotelIcon />, path: "/admin/rooms" },
   { text: "Payments", icon: <PaymentIcon />, path: "/admin/payments" },
-  //{ text: 'Dashboard Config', icon: <AnnouncementIcon />, path: '/admin/config' },
+  { text: "Notifications", icon: <AnnouncementIcon />, path: "/admin/notifications" },
 ];
+
+const DashboardLayout = dynamic(
+  () => import("@/components/shared/DashboardLayout"),
+  { ssr: false },
+);
 
 export default function AdminLayout({
   children,

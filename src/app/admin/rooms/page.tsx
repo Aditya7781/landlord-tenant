@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -23,28 +23,119 @@ import {
   Delete as DeleteIcon,
   KingBed as BedIcon,
 } from "@mui/icons-material";
-import { useHostel } from "@/context/HostelContext";
+
+interface Room {
+  id: string;
+  number: string;
+  totalBeds: number;
+  occupiedBeds: number;
+}
+
+interface ApiRoom {
+  roomNo: string;
+  status: string;
+  totalBeds: number;
+  occupiedBeds: number;
+  vacantBeds: number;
+  occupancy: string;
+}
+
+interface ApiResponse {
+  rooms: ApiRoom[];
+}
+
+const getCookieValue = (name: string): string | null => {
+  if (typeof document === "undefined") return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift() || null;
+  return null;
+};
 
 export default function RoomManagement() {
-  const { rooms } = useHostel();
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+  useEffect(() => {
+    const token = getCookieValue("session_token");
+    if (!token) {
+      console.error("No session_token found in cookies");
+      return;
+    }
+
+    fetch("/api/rooms", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(
+            `HTTP error! status: ${res.status}, statusText: ${res.statusText}`,
+          );
+        }
+        return res.json();
+      })
+      .then((data: ApiResponse) => {
+        
+        const transformedRooms = data.rooms.map((room: ApiRoom) => ({
+          id: room.roomNo,
+          number: room.roomNo,
+          totalBeds: room.totalBeds,
+          occupiedBeds: room.occupiedBeds,
+        }));
+        setRooms(transformedRooms);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch rooms:", err);
+      });
+  }, []);
 
   /* ---------- Add Room ---------- */
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     number: "",
     totalBeds: 0,
-    occupiedBeds: 0,
   });
 
   /* ---------- Delete Room ---------- */
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
 
-  const handleAddRoom = () => {
-    // ❗ Frontend-only placeholder
-    console.warn("Add Room should call backend later");
-    setOpen(false);
-    setForm({ number: "", totalBeds: 0, occupiedBeds: 0 });
+  const handleAddRoom = async () => {
+    const token = getCookieValue("session_token");
+    if (!token) {
+      alert("No authentication token found");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          roomNo: form.number,
+          numberOfBeds: form.totalBeds,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Room added successfully");
+        setOpen(false);
+        setForm({ number: "", totalBeds: 0 });
+        // Optionally refetch rooms
+        window.location.reload();
+      } else {
+        alert(data.message || "Failed to add room");
+      }
+    } catch (error) {
+      console.error("Add room error:", error);
+      alert("Network error. Please try again.");
+    }
   };
 
   const handleDeleteRoom = () => {
@@ -119,16 +210,16 @@ export default function RoomManagement() {
                           occupancy === 100
                             ? "Full"
                             : occupancy === 0
-                            ? "Empty"
-                            : "Available"
+                              ? "Empty"
+                              : "Available"
                         }
                         size="small"
                         color={
                           occupancy === 100
                             ? "error"
                             : occupancy === 0
-                            ? "success"
-                            : "warning"
+                              ? "success"
+                              : "warning"
                         }
                         sx={{ mt: 1, fontWeight: 600 }}
                       />
@@ -207,15 +298,6 @@ export default function RoomManagement() {
             value={form.totalBeds}
             onChange={(e) =>
               setForm({ ...form, totalBeds: Number(e.target.value) })
-            }
-            fullWidth
-          />
-          <TextField
-            label="Occupied Beds"
-            type="number"
-            value={form.occupiedBeds}
-            onChange={(e) =>
-              setForm({ ...form, occupiedBeds: Number(e.target.value) })
             }
             fullWidth
           />
