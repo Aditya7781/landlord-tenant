@@ -90,6 +90,7 @@ export default function ProfileContent({ role }: ProfileContentProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [userData, setUserData] = useState<UserDetails | null>(null);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -227,6 +228,8 @@ export default function ProfileContent({ role }: ProfileContentProps) {
               fatherName: user.fatherName || "",
               emergencyContact: user.guardianContactNo || "",
             });
+            // Store user data for profile image and documents
+            setUserData(user);
           } else {
             console.error("API returned error or unexpected structure:", data?.message || "Unknown error");
             console.error("Full response structure:", data);
@@ -353,6 +356,7 @@ export default function ProfileContent({ role }: ProfileContentProps) {
           >
             <Box sx={{ position: "relative", display: "inline-block", mb: 3 }}>
               <Avatar
+                src={userData?.documents?.profilePhoto || ""}
                 sx={{
                   width: 120,
                   height: 120,
@@ -361,11 +365,12 @@ export default function ProfileContent({ role }: ProfileContentProps) {
                   boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
                 }}
               >
-                {loading
+                {!userData?.documents?.profilePhoto && (loading
                   ? ""
                   : role === "admin"
                     ? `${formData.firstName[0] || "A"}${formData.lastName[0] || "D"}`.toUpperCase()
-                    : "SR"}
+                    : `${formData.firstName[0] || "U"}${formData.lastName[0] || "S"}`.toUpperCase()
+                )}
               </Avatar>
               <IconButton
                 sx={{
@@ -654,85 +659,73 @@ export default function ProfileContent({ role }: ProfileContentProps) {
               </Box>
 
               <Stack spacing={2}>
-                {[
-                  {
-                    name: "Aadhaar Card Front",
-                    status: "Verified",
-                    date: "Oct 12, 2023",
-                  },
-                  {
-                    name: "Aadhaar Card Back",
-                    status: "Verified",
-                    date: "Oct 12, 2023",
-                  },
-                  {
-                    name: "College ID / Office ID",
-                    status: "Pending",
-                    date: "Oct 14, 2023",
-                  },
-                ].map((doc, i) => (
-                  <Paper
-                    key={i}
-                    variant="outlined"
-                    sx={{
-                      p: 2,
-                      borderRadius: 3,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      bgcolor: "action.hover",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <Box
+                {userData?.documents ? (
+                  [
+                    { name: "Aadhaar Card Front", url: userData.documents.aadharFront },
+                    { name: "Aadhaar Card Back", url: userData.documents.aadharBack },
+                    { name: "Profile Photo", url: userData.documents.profilePhoto },
+                    { name: "ID Proof", url: userData.documents.idProof },
+                  ]
+                    .filter(doc => doc.url) // Only show documents that exist
+                    .map((doc, i) => (
+                      <Paper
+                        key={i}
+                        variant="outlined"
                         sx={{
-                          p: 1,
-                          borderRadius: 2,
-                          bgcolor: "primary.light",
-                          color: "white",
+                          p: 2,
+                          borderRadius: 3,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          bgcolor: "action.hover",
                         }}
                       >
-                        <DocIcon fontSize="small" />
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {doc.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Uploaded on {doc.date}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Chip
-                        label={doc.status}
-                        size="small"
-                        color={
-                          doc.status === "Verified" ? "success" : "warning"
-                        }
-                        sx={{
-                          height: 20,
-                          fontSize: "0.65rem",
-                          fontWeight: 800,
-                        }}
-                      />
-                      <IconButton size="small" title="View">
-                        <ViewIcon fontSize="small" />
-                      </IconButton>
-                      {/* <IconButton
-                        size="small"
-                        component="label"
-                        title="Edit Document"
-                      >
-                        <EditIcon fontSize="small" color="primary" />
-                        <input type="file" hidden />
-                      </IconButton>
-                      <IconButton size="small" color="error" title="Delete">
-                        <DeleteIcon fontSize="small" />
-                      </IconButton> */}
-                    </Box>
-                  </Paper>
-                ))}
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <Box
+                            sx={{
+                              p: 1,
+                              borderRadius: 2,
+                              bgcolor: "primary.light",
+                              color: "white",
+                            }}
+                          >
+                            <DocIcon fontSize="small" />
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              {doc.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Available
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Chip
+                            label="Available"
+                            size="small"
+                            color="success"
+                            sx={{
+                              height: 20,
+                              fontSize: "0.65rem",
+                              fontWeight: 800,
+                            }}
+                          />
+                          <IconButton 
+                            size="small" 
+                            title="View"
+                            onClick={() => window.open(doc.url, '_blank')}
+                          >
+                            <ViewIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </Paper>
+                    ))
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                    No documents uploaded yet
+                  </Typography>
+                )}
               </Stack>
 
               <Box

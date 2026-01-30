@@ -27,6 +27,10 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
 import {
   Search as SearchIcon,
   Edit as EditIcon,
@@ -182,7 +186,7 @@ export default function UserManagement() {
   const [roomNumber, setRoomNumber] = useState("");
   const [bedNo, setBedNo] = useState<string>("");
   const [amount, setAmount] = useState<number | "">("");
-  const [dueDate, setDueDate] = useState("");
+  const [dueDate, setDueDate] = useState<dayjs.Dayjs | null>(dayjs());
 
   const roomOptions = Object.keys(unoccupiedRooms);
   const bedOptions = roomNumber ? unoccupiedRooms[roomNumber] || [] : [];
@@ -232,7 +236,7 @@ export default function UserManagement() {
     setRoomNumber("");
     setBedNo("");
     setAmount("");
-    setDueDate(new Date().toISOString());
+    setDueDate(dayjs());
     setOpen(true);
     fetchUnoccupiedRooms();
   };
@@ -263,7 +267,7 @@ export default function UserManagement() {
           roomNo: roomNumber,
           bedIndex: computedBedIndex,
           amount: Number(amount),
-          dueDate: dueDate,
+          dueDate: dueDate ? dueDate.toISOString() : "",
         }),
       });
 
@@ -792,13 +796,18 @@ export default function UserManagement() {
             </Grid>
 
             <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                label="Due Date"
-                placeholder="YYYY-MM-DDTHH:MM:SSZ"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Due Date"
+                  value={dueDate}
+                  onChange={(newValue) => setDueDate(newValue)}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                    },
+                  }}
+                />
+              </LocalizationProvider>
             </Grid>
           </Grid>
         </DialogContent>

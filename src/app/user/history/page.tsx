@@ -24,6 +24,7 @@ import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 
 type PaymentApiItem = {
   sk: string;
+  receipt?: string;
   status: string;
   amount: number;
   createdAt: string;
@@ -102,7 +103,9 @@ export default function PaymentHistory() {
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <ReceiptIcon fontSize="small" />
-                      <Typography variant="body2">{p.sk}</Typography>
+                      <Typography variant="body2">
+                        {p.receipt || `REC-${p.sk.split('#')[1] || 'UNKNOWN'}`}
+                      </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>{formatDate(p.createdAt)}</TableCell>
