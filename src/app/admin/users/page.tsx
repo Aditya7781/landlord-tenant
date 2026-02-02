@@ -686,9 +686,9 @@ export default function UserManagement() {
                       <EditIcon fontSize="small" />
                     </IconButton>
 
-                    <IconButton size="small">
+                    {/* <IconButton size="small">
                       <DeleteIcon fontSize="small" color="error" />
-                    </IconButton>
+                    </IconButton> */}
                   </TableCell>
                 </TableRow>
               ))

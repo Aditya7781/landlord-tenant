@@ -21,12 +21,9 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect if already logged in
-  if ((pathname === "/login" || pathname === "/register") && session) {
-    const redirectUrl =
-      session.role === "admin" ? "/admin/dashboard" : "/user/dashboard";
-    return NextResponse.redirect(new URL(redirectUrl, request.url));
-  }
+  // Allow access to login page even if logged in (for re-login)
+  // Users can choose to re-login if they want
+  // Remove automatic redirect from login/register pages
 
   return NextResponse.next();
 }

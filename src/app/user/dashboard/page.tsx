@@ -22,6 +22,7 @@ import {
     Assignment as AssignmentIcon,
     VerifiedUser as VerifiedIcon,
     Notifications as NotificationIcon,
+    Campaign as CampaignIcon,
 } from '@mui/icons-material';
 import { DashboardSkeleton } from '@/components/shared/SkeletonLoader';
 import { motion } from 'framer-motion';
@@ -45,6 +46,14 @@ interface DashboardResponse {
     summary: { totalAssignments: number; rooms: number };
 }
 
+interface Announcement {
+    id?: string;
+    title: string;
+    message: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 const formatDate = (dateString: string | undefined) => {
     if (!dateString) return '—';
     try {
@@ -65,6 +74,9 @@ export default function UserDashboard() {
     const [data, setData] = React.useState<DashboardResponse | null>(null);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
+    const [announcements, setAnnouncements] = React.useState<Announcement[]>([]);
+    const [announcementsLoading, setAnnouncementsLoading] = React.useState(true);
+    const [announcementsError, setAnnouncementsError] = React.useState<string | null>(null);
 
     React.useEffect(() => {
         const fetchData = async () => {
@@ -83,6 +95,41 @@ export default function UserDashboard() {
             }
         };
         fetchData();
+    }, []);
+
+    React.useEffect(() => {
+        const fetchAnnouncements = async () => {
+            try {
+                const token = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('session_token='))
+                    ?.split('=')[1];
+
+                if (!token) {
+                    setAnnouncementsError('No authentication token found');
+                    return;
+                }
+
+                const res = await fetch('/api/announcements', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+
+                const json = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(json.message || 'Failed to load announcements');
+                }
+
+                setAnnouncements(json.announcements || []);
+            } catch (e) {
+                setAnnouncementsError(e instanceof Error ? e.message : 'Something went wrong');
+            } finally {
+                setAnnouncementsLoading(false);
+            }
+        };
+        fetchAnnouncements();
     }, []);
 
     if (loading) return <DashboardSkeleton />;
@@ -201,14 +248,69 @@ export default function UserDashboard() {
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Paper sx={{ p: 4, borderRadius: 4, height: '100%' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-                            <NotificationIcon color="primary" />
+                            <CampaignIcon color="primary" />
                             <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                 Latest Updates
                             </Typography>
                         </Box>
-                        <Typography color="text.secondary">
-                            No updates at the moment. Notifications will appear here when available.
-                        </Typography>
+                        
+                        {announcementsLoading ? (
+                            <Typography color="text.secondary">
+                                Loading announcements...
+                            </Typography>
+                        ) : announcementsError ? (
+                            <Typography color="error" variant="body2">
+                                {announcementsError}
+                            </Typography>
+                        ) : announcements.length === 0 ? (
+                            <Typography color="text.secondary">
+                                No announcements at the moment. Updates will appear here when available.
+                            </Typography>
+                        ) : (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {announcements.slice(0, 5).map((announcement, index) => (
+                                    <motion.div
+                                        key={announcement.id || index}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: index * 0.1 }}
+                                    >
+                                        <Paper 
+                                            variant="outlined" 
+                                            sx={{ 
+                                                p: 2, 
+                                                borderLeft: 3, 
+                                                borderLeftColor: 'primary.main',
+                                                '&:hover': {
+                                                    bgcolor: 'action.hover',
+                                                    transition: 'bgcolor 0.2s'
+                                                }
+                                            }}
+                                        >
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                                {announcement.title}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                                {announcement.message.length > 100 
+                                                    ? `${announcement.message.substring(0, 100)}...` 
+                                                    : announcement.message
+                                                }
+                                            </Typography>
+                                            {announcement.createdAt && (
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {formatDate(announcement.createdAt)}
+                                                </Typography>
+                                            )}
+                                        </Paper>
+                                    </motion.div>
+                                ))}
+                                {announcements.length > 5 && (
+                                    <Typography variant="body2" color="primary" sx={{ textAlign: 'center', mt: 1 }}>
+                                        +{announcements.length - 5} more announcements
+                                    </Typography>
+                                )}
+                            </Box>
+                        )}
                     </Paper>
                 </Grid>
             </Grid>

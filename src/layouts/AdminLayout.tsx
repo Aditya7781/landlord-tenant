@@ -7,7 +7,8 @@ import {
   People as PeopleIcon,
   Hotel as HotelIcon,
   Payment as PaymentIcon,
-  Announcement as AnnouncementIcon,
+  Campaign as CampaignIcon,
+  Notifications as NotificationIcon,
 } from "@mui/icons-material";
 
 const adminMenuItems = [
@@ -15,7 +16,8 @@ const adminMenuItems = [
   { text: "User Management", icon: <PeopleIcon />, path: "/admin/users" },
   { text: "Room & Bed", icon: <HotelIcon />, path: "/admin/rooms" },
   { text: "Payments", icon: <PaymentIcon />, path: "/admin/payments" },
-  { text: "Notifications", icon: <AnnouncementIcon />, path: "/admin/notifications" },
+  { text: "Announcements", icon: <CampaignIcon />, path: "/admin/announcements" },
+  { text: "Notifications", icon: <NotificationIcon />, path: "/admin/notifications" },
 ];
 
 const DashboardLayout = dynamic(
