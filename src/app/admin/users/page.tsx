@@ -242,7 +242,7 @@ export default function UserManagement() {
       const matchesStatus = !statusFilter || user.status === statusFilter;
       
       // Allocation filter (allocated vs unallocated)
-      const hasAllocation = user.allocations && user.allocations.length > 0;
+      const hasAllocation = Boolean(user.allocations && user.allocations.length > 0);
       let matchesAllocation = true;
       if (allocationFilter === "allocated") {
         matchesAllocation = hasAllocation;
