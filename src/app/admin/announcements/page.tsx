@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -13,12 +13,22 @@ import {
   Alert,
   CircularProgress,
   Snackbar,
+  IconButton,
+  Chip,
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
   Send as SendIcon,
   Campaign as CampaignIcon,
   Clear as ClearIcon,
+  Delete as DeleteIcon,
+  Refresh as RefreshIcon,
 } from "@mui/icons-material";
+import { motion } from 'framer-motion';
 
 const getCookieValue = (name: string): string | null => {
   if (typeof document === "undefined") return null;
@@ -31,6 +41,14 @@ const getCookieValue = (name: string): string | null => {
 interface AnnouncementForm {
   title: string;
   message: string;
+}
+
+interface Announcement {
+  id?: string;
+  title: string;
+  message: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function AnnouncementManagement() {
@@ -50,6 +68,121 @@ export default function AnnouncementManagement() {
     message: "",
     severity: "success",
   });
+  
+  // State for announcements list
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const [announcementsError, setAnnouncementsError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [announcementToDelete, setAnnouncementToDelete] = useState<Announcement | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  const token = getCookieValue("session_token");
+
+  // Fetch announcements on component mount
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return '—';
+    try {
+        return new Date(dateString).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch {
+        return '—';
+    }
+  };
+
+  const fetchAnnouncements = async () => {
+    if (!token) {
+      setAnnouncementsError("No authentication token found");
+      setAnnouncementsLoading(false);
+      return;
+    }
+
+    setAnnouncementsLoading(true);
+    setAnnouncementsError(null);
+    
+    try {
+      const response = await fetch("/api/announcements", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        setAnnouncements(result.announcements || []);
+      } else {
+        setAnnouncementsError(result.message || "Failed to fetch announcements");
+      }
+    } catch (error) {
+      console.error("Fetch announcements error:", error);
+      setAnnouncementsError("Network error. Please try again.");
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = (announcement: Announcement) => {
+    setAnnouncementToDelete(announcement);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteAnnouncement = async () => {
+    if (!announcementToDelete || !token) return;
+
+    setDeleteLoading(true);
+    
+    try {
+      const response = await fetch("/api/admin/announcements", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: announcementToDelete.id,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        setSnackbar({
+          open: true,
+          message: "Announcement deleted successfully!",
+          severity: "success",
+        });
+        // Refresh announcements list
+        fetchAnnouncements();
+      } else {
+        setSnackbar({
+          open: true,
+          message: result.message || "Failed to delete announcement",
+          severity: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Delete announcement error:", error);
+      setSnackbar({
+        open: true,
+        message: "Network error. Please try again.",
+        severity: "error",
+      });
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+      setAnnouncementToDelete(null);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -100,6 +233,8 @@ export default function AnnouncementManagement() {
           message: "Announcement created successfully!",
           severity: "success",
         });
+        // Refresh announcements list after creating new one
+        fetchAnnouncements();
       } else {
         setError(result.message || "Failed to create announcement");
         setSnackbar({
@@ -238,12 +373,92 @@ export default function AnnouncementManagement() {
 
           <Card sx={{ mt: 2 }}>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                Recent Activity
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                No announcements created yet. Use the form to create your first announcement.
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Recent Activity
+                </Typography>
+                <IconButton 
+                  size="small" 
+                  onClick={fetchAnnouncements}
+                  disabled={announcementsLoading}
+                  title="Refresh"
+                >
+                  <RefreshIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              
+              {announcementsLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                  <CircularProgress size={20} />
+                  <Typography variant="body2" sx={{ ml: 1 }}>
+                    Loading announcements...
+                  </Typography>
+                </Box>
+              ) : announcementsError ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {announcementsError}
+                </Alert>
+              ) : announcements.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No announcements created yet. Use the form to create your first announcement.
+                </Typography>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {announcements.slice(0, 10).map((announcement, index) => (
+                    <motion.div
+                      key={announcement.id || index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <Paper 
+                        variant="outlined" 
+                        sx={{ 
+                          p: 2, 
+                          borderLeft: 3, 
+                          borderLeftColor: 'primary.main',
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            transition: 'bgcolor 0.2s'
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                              {announcement.title}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              {announcement.message.length > 150 
+                                ? `${announcement.message.substring(0, 150)}...` 
+                                : announcement.message
+                              }
+                            </Typography>
+                            {announcement.createdAt && (
+                              <Typography variant="caption" color="text.secondary">
+                                {formatDate(announcement.createdAt)}
+                              </Typography>
+                            )}
+                          </Box>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleDeleteAnnouncement(announcement)}
+                            title="Delete announcement"
+                            sx={{ ml: 1 }}
+                          >
+                            <DeleteIcon fontSize="small" color="error" />
+                          </IconButton>
+                        </Box>
+                      </Paper>
+                    </motion.div>
+                  ))}
+                  {announcements.length > 10 && (
+                    <Typography variant="body2" color="primary" sx={{ textAlign: 'center', mt: 1 }}>
+                      +{announcements.length - 10} more announcements
+                    </Typography>
+                  )}
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -263,6 +478,57 @@ export default function AnnouncementManagement() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Delete Announcement
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            Are you sure you want to delete this announcement?
+          </Typography>
+          {announcementToDelete && (
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                {announcementToDelete.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {announcementToDelete.message.length > 100 
+                  ? `${announcementToDelete.message.substring(0, 100)}...` 
+                  : announcementToDelete.message
+                }
+              </Typography>
+            </Paper>
+          )}
+          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteDialogOpen(false)}
+            disabled={deleteLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDeleteAnnouncement}
+            variant="contained"
+            color="error"
+            disabled={deleteLoading}
+            startIcon={deleteLoading ? <CircularProgress size={16} /> : <DeleteIcon />}
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

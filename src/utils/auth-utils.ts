@@ -85,7 +85,7 @@ export const clearSession = () => {
   });
 };
 
-export const validateSession = (): boolean => {
+export const validateSession = (autoLogout = true): boolean => {
   const session = getSession();
   if (!session) return false;
 
@@ -99,17 +99,88 @@ export const validateSession = (): boolean => {
     const currentTime = Math.floor(Date.now() / 1000);
 
     if (payload.exp && payload.exp < currentTime) {
-      // Token expired, clear session
-      clearSession();
+      // Token expired, only clear session if autoLogout is true
+      if (autoLogout) {
+        clearSession();
+      }
       return false;
     }
 
     return true;
   } catch (error) {
     console.error("Error validating token:", error);
-    clearSession();
+    if (autoLogout) {
+      clearSession();
+    }
     return false;
   }
+};
+
+// Check if session is valid without auto-logout
+export const checkSessionValidity = (): boolean => {
+  return validateSession(false);
+};
+
+// Refresh session by extending cookie expiration
+export const refreshSession = (): boolean => {
+  const session = getSession();
+  if (!session) return false;
+
+  const token = getCookieValue("session_token");
+  if (!token) return false;
+
+  // Extend cookie expiration by 7 days from now
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + 7);
+  const expires = expiryDate.toUTCString();
+
+  // Refresh cookies with new expiration
+  document.cookie = `session_token=${token}; path=/; expires=${expires}; SameSite=Lax`;
+  document.cookie = `session_role=${session.role}; path=/; expires=${expires}; SameSite=Lax`;
+  document.cookie = `user_info=${encodeURIComponent(JSON.stringify(session))}; path=/; expires=${expires}; SameSite=Lax`;
+
+  return true;
+};
+
+// Auto-refresh session on user activity
+export const setupSessionRefresh = (): (() => void) => {
+  if (typeof window === "undefined") return () => {};
+
+  let refreshTimer: NodeJS.Timeout;
+  const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+  const refresh = () => {
+    if (checkSessionValidity()) {
+      refreshSession();
+    }
+  };
+
+  const setupTimer = () => {
+    refreshTimer = setInterval(refresh, REFRESH_INTERVAL);
+  };
+
+  const handleActivity = () => {
+    // Reset timer on user activity
+    clearInterval(refreshTimer);
+    setupTimer();
+  };
+
+  // Setup initial timer
+  setupTimer();
+
+  // Add activity listeners
+  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+  events.forEach(event => {
+    document.addEventListener(event, handleActivity, true);
+  });
+
+  // Cleanup function
+  return () => {
+    clearInterval(refreshTimer);
+    events.forEach(event => {
+      document.removeEventListener(event, handleActivity, true);
+    });
+  };
 };
 
 const getCookieValue = (name: string): string | null => {

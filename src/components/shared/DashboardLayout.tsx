@@ -29,7 +29,7 @@ import {
 } from "@mui/icons-material";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { clearSession, validateSession } from "@/utils/auth-utils";
+import { clearSession, validateSession, checkSessionValidity, setupSessionRefresh } from "@/utils/auth-utils";
 
 const drawerWidth = 280;
 
@@ -68,6 +68,60 @@ export default function DashboardLayout({
     if (!validateSession()) {
       router.push("/login");
     }
+  }, [router]);
+
+  // Setup session refresh mechanism
+  useEffect(() => {
+    const cleanup = setupSessionRefresh();
+    return cleanup;
+  }, []);
+
+  // Handle tab visibility changes to prevent auto-logout
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleVisibilityChange = () => {
+      // When tab becomes visible, check session validity without auto-logout
+      if (!document.hidden) {
+        const isValid = checkSessionValidity();
+        if (!isValid) {
+          // Session is expired, show user-friendly message and redirect
+          const message = "Your session has expired. Please login again.";
+          if (window.confirm(message)) {
+            clearSession();
+            router.push("/login");
+          } else {
+            clearSession();
+            router.push("/login");
+          }
+        }
+      }
+    };
+
+    const handleFocus = () => {
+      // When window gains focus, check session validity without auto-logout
+      const isValid = checkSessionValidity();
+      if (!isValid) {
+        const message = "Your session has expired. Please login again.";
+        if (window.confirm(message)) {
+          clearSession();
+          router.push("/login");
+        } else {
+          clearSession();
+          router.push("/login");
+        }
+      }
+    };
+
+    // Add event listeners
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    // Cleanup event listeners
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [router]);
 
   // Attach popstate listener to prompt logout on dashboard back,

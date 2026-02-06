@@ -182,6 +182,12 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  // Filter states
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [allocationFilter, setAllocationFilter] = useState<string>("");
+  const [roomFilter, setRoomFilter] = useState<string>("");
 
   const [roomNumber, setRoomNumber] = useState("");
   const [bedNo, setBedNo] = useState<string>("");
@@ -224,12 +230,53 @@ export default function UserManagement() {
   };
 
   const filteredUsers = users.filter(
-    (user) =>
-      `${user.firstName} ${user.lastName}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      user.emailAddress.toLowerCase().includes(searchTerm.toLowerCase()),
+    (user) => {
+      // Search filter (name and email)
+      const matchesSearch = 
+        `${user.firstName} ${user.lastName}`
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        user.emailAddress.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Status filter
+      const matchesStatus = !statusFilter || user.status === statusFilter;
+      
+      // Allocation filter (allocated vs unallocated)
+      const hasAllocation = user.allocations && user.allocations.length > 0;
+      let matchesAllocation = true;
+      if (allocationFilter === "allocated") {
+        matchesAllocation = hasAllocation;
+      } else if (allocationFilter === "unallocated") {
+        matchesAllocation = !hasAllocation;
+      }
+      
+      // Room filter (specific room number)
+      let matchesRoom = true;
+      if (roomFilter) {
+        matchesRoom = user.allocations?.some(allocation => 
+          allocation.roomNo === roomFilter
+        ) || false;
+      }
+      
+      return matchesSearch && matchesStatus && matchesAllocation && matchesRoom;
+    }
   );
+  
+  // Get unique room numbers for filter dropdown
+  const availableRooms = Array.from(
+    new Set(
+      users.flatMap(user => 
+        user.allocations?.map(allocation => allocation.roomNo) || []
+      )
+    )
+  ).sort();
+  
+  // Get active filters count
+  const activeFiltersCount = [
+    statusFilter,
+    allocationFilter, 
+    roomFilter
+  ].filter(filter => filter !== "").length;
 
   const handleOpenAssign = (user: User) => {
     setSelectedUser(user);
@@ -521,9 +568,17 @@ export default function UserManagement() {
           <Button
             variant="outlined"
             startIcon={<FilterIcon />}
+            onClick={() => setFilterOpen(true)}
             sx={{ borderRadius: 2 }}
           >
             Filter
+            {activeFiltersCount > 0 && (
+              <Chip 
+                label={activeFiltersCount} 
+                size="small" 
+                sx={{ ml: 1, bgcolor: 'primary.main', color: 'white' }} 
+              />
+            )}
           </Button>
         </Box>
       </Box>
@@ -1236,6 +1291,151 @@ export default function UserManagement() {
             sx={{ fontWeight: 700 }}
           >
             Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ---------- Filter Dialog ---------- */}
+      <Dialog
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <FilterIcon />
+          Filter Users
+          {activeFiltersCount > 0 && (
+            <Chip 
+              label={`${activeFiltersCount} active`} 
+              size="small" 
+              sx={{ bgcolor: 'primary.main', color: 'white' }} 
+            />
+          )}
+        </DialogTitle>
+
+        <DialogContent>
+          <Typography sx={{ mb: 3, color: "text.secondary" }}>
+            Apply filters to refine the user list. Filters work together with the search functionality.
+          </Typography>
+
+          <Grid container spacing={3}>
+            {/* Status Filter */}
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  startAdornment={<PersonIcon sx={{ mr: 1, color: 'action.active' }} />}
+                >
+                  <MenuItem value="">All Statuses</MenuItem>
+                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="inactive">Inactive</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Allocation Filter */}
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Allocation Status</InputLabel>
+                <Select
+                  value={allocationFilter}
+                  label="Allocation Status"
+                  onChange={(e) => setAllocationFilter(e.target.value)}
+                  startAdornment={<HotelIcon sx={{ mr: 1, color: 'action.active' }} />}
+                >
+                  <MenuItem value="">All Users</MenuItem>
+                  <MenuItem value="allocated">Allocated</MenuItem>
+                  <MenuItem value="unallocated">Unallocated</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Room Filter */}
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Room Number</InputLabel>
+                <Select
+                  value={roomFilter}
+                  label="Room Number"
+                  onChange={(e) => setRoomFilter(e.target.value)}
+                  disabled={availableRooms.length === 0}
+                  startAdornment={<HomeIcon sx={{ mr: 1, color: 'action.active' }} />}
+                >
+                  <MenuItem value="">All Rooms</MenuItem>
+                  {availableRooms.map((room) => (
+                    <MenuItem key={room} value={room}>
+                      Room {room}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {availableRooms.length === 0 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  No rooms with allocated users available
+                </Typography>
+              )}
+            </Grid>
+          </Grid>
+
+          {/* Filter Summary */}
+          {activeFiltersCount > 0 && (
+            <Box sx={{ mt: 3, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Active Filters:
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {statusFilter && (
+                  <Chip 
+                    label={`Status: ${statusFilter}`} 
+                    size="small" 
+                    onDelete={() => setStatusFilter("")}
+                    color="primary"
+                  />
+                )}
+                {allocationFilter && (
+                  <Chip 
+                    label={`Allocation: ${allocationFilter}`} 
+                    size="small" 
+                    onDelete={() => setAllocationFilter("")}
+                    color="primary"
+                  />
+                )}
+                {roomFilter && (
+                  <Chip 
+                    label={`Room: ${roomFilter}`} 
+                    size="small" 
+                    onDelete={() => setRoomFilter("")}
+                    color="primary"
+                  />
+                )}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => {
+              setStatusFilter("");
+              setAllocationFilter("");
+              setRoomFilter("");
+            }} 
+            sx={{ fontWeight: 700 }}
+          >
+            Clear All
+          </Button>
+          <Button 
+            onClick={() => setFilterOpen(false)} 
+            variant="contained"
+            sx={{ fontWeight: 700 }}
+          >
+            Apply Filters
           </Button>
         </DialogActions>
       </Dialog>

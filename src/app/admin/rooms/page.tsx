@@ -16,6 +16,10 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -101,6 +105,14 @@ export default function RoomManagement() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
 
+  /* ---------- Edit Room ---------- */
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    roomNo: "",
+    bedIndex: 0,
+    operation: "add" as "add" | "remove",
+  });
+
   const handleAddRoom = async () => {
     const token = getCookieValue("session_token");
     if (!token) {
@@ -138,11 +150,92 @@ export default function RoomManagement() {
     }
   };
 
-  const handleDeleteRoom = () => {
-    // ❗ Frontend-only placeholder
-    console.warn("Delete Room should call backend later");
-    setDeleteOpen(false);
-    setSelectedRoomId(null);
+  const handleDeleteRoom = async () => {
+    if (!selectedRoomId) return;
+
+    const token = getCookieValue("session_token");
+    if (!token) {
+      alert("No authentication token found");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/rooms/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          roomNo: selectedRoomId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(data.message || "Room deleted successfully");
+        setDeleteOpen(false);
+        setSelectedRoomId(null);
+        // Refresh the rooms list
+        window.location.reload();
+      } else {
+        alert(data.message || "Failed to delete room");
+      }
+    } catch (error) {
+      console.error("Delete room error:", error);
+      alert("Network error. Please try again.");
+    }
+  };
+
+  const handleEditRoom = async () => {
+    const token = getCookieValue("session_token");
+    if (!token) {
+      alert("No authentication token found");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/rooms/edit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          roomNo: editForm.roomNo,
+          bedIndex: editForm.bedIndex,
+          operation: editForm.operation,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(data.message || `Bed ${editForm.operation === "add" ? "added" : "removed"} successfully`);
+        setEditOpen(false);
+        setEditForm({ roomNo: "", bedIndex: 1, operation: "add" });
+        // Refresh the rooms list
+        window.location.reload();
+      } else {
+        alert(data.message || "Failed to edit room");
+      }
+    } catch (error) {
+      console.error("Edit room error:", error);
+      alert("Network error. Please try again.");
+    }
+  };
+
+  const openEditDialog = (room: Room) => {
+    // Calculate next bed index for add operation (0-based indexing)
+    const nextBedIndex = room.totalBeds; // If 5 beds exist, next index is 5 (0,1,2,3,4 are taken)
+    
+    setEditForm({
+      roomNo: room.number,
+      bedIndex: nextBedIndex,
+      operation: "add",
+    });
+    setEditOpen(true);
   };
 
   return (
@@ -226,7 +319,10 @@ export default function RoomManagement() {
                     </Box>
 
                     <Box>
-                      <IconButton size="small">
+                      <IconButton 
+                        size="small"
+                        onClick={() => openEditDialog(room)}
+                      >
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton
@@ -326,6 +422,106 @@ export default function RoomManagement() {
           <Button onClick={() => setDeleteOpen(false)}>Cancel</Button>
           <Button variant="contained" color="error" onClick={handleDeleteRoom}>
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ---------- Edit Room Dialog ---------- */}
+      <Dialog
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Edit Room - {editForm.roomNo}</DialogTitle>
+
+        <DialogContent sx={{ display: "grid", gap: 2, mt: 1 }}>
+          <TextField
+            label="Room Number"
+            value={editForm.roomNo}
+            disabled
+            fullWidth
+          />
+          <TextField
+            label="Bed Index"
+            type="number"
+            value={editForm.bedIndex}
+            disabled={editForm.operation === "add"}
+            onChange={(e) =>
+              setEditForm({ ...editForm, bedIndex: Number(e.target.value) })
+            }
+            fullWidth
+            helperText={
+              editForm.operation === "add" 
+                ? "Automatically calculated as next available bed (0-based indexing)"
+                : "Select a specific bed to remove from the dropdown below"
+            }
+            sx={{ display: editForm.operation === "remove" ? "none" : "block" }}
+          />
+          {editForm.operation === "remove" && (
+            <FormControl fullWidth>
+              <InputLabel>Select Bed to Remove</InputLabel>
+              <Select
+                value={editForm.bedIndex}
+                label="Select Bed to Remove"
+                onChange={(e) =>
+                  setEditForm({ ...editForm, bedIndex: Number(e.target.value) })
+                }
+              >
+                {(() => {
+                  const room = rooms.find(r => r.number === editForm.roomNo);
+                  if (!room) return <MenuItem value="">No room data</MenuItem>;
+                  
+                  return Array.from({ length: room.totalBeds }, (_, index) => {
+                    const isOccupied = index < room.occupiedBeds;
+                    return (
+                      <MenuItem 
+                        key={index} 
+                        value={index}
+                        disabled={isOccupied}
+                        sx={{
+                          color: isOccupied ? "text.secondary" : "text.primary",
+                          backgroundColor: isOccupied ? "action.disabled" : "inherit"
+                        }}
+                      >
+                        Bed {index} {isOccupied ? "(Occupied - Cannot remove)" : "(Vacant)"}
+                      </MenuItem>
+                    );
+                  });
+                })()}
+              </Select>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Only vacant beds can be removed. Occupied beds are disabled.
+              </Typography>
+            </FormControl>
+          )}
+          <FormControl fullWidth>
+            <InputLabel>Operation</InputLabel>
+            <Select
+              value={editForm.operation}
+              label="Operation"
+              onChange={(e) => {
+                const newOperation = e.target.value as "add" | "remove";
+                // If switching to add, recalculate bed index
+                if (newOperation === "add") {
+                  const room = rooms.find(r => r.number === editForm.roomNo);
+                  const nextBedIndex = room ? room.totalBeds : 0; // 0-based indexing
+                  setEditForm({ ...editForm, operation: newOperation, bedIndex: nextBedIndex });
+                } else {
+                  setEditForm({ ...editForm, operation: newOperation });
+                }
+              }}
+            >
+              <MenuItem value="add">Add Bed</MenuItem>
+              <MenuItem value="remove">Remove Bed</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleEditRoom}>
+            {editForm.operation === "add" ? "Add Bed" : "Remove Bed"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -204,6 +204,58 @@ export default function PaymentManagement() {
         }
     };
 
+    const handleIndividualPaymentAction = async (item: PaymentItem) => {
+        if (!token) {
+            alert("No authentication token found");
+            return;
+        }
+
+        if (!item.roomNo || !item.bedName) {
+            alert("Room and bed information is required to send payment reminder");
+            return;
+        }
+
+        // Extract bedIndex from bedName (e.g., "B2" → 1)
+        let bedIndex: number | null = null;
+        const bedMatch = /^B(\d+)$/.exec(item.bedName);
+        if (bedMatch) {
+            bedIndex = parseInt(bedMatch[1]) - 1; // Convert to 0-based index
+        }
+
+        if (bedIndex === null) {
+            alert(`Invalid bed format: ${item.bedName}. Expected format: B1, B2, etc.`);
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/payments/trigger", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    userEmail: item.userEmail,
+                    yearMonth: item.month,
+                    roomNo: item.roomNo,
+                    bedIndex: bedIndex,
+                }),
+            });
+
+            const result = await response.json();
+            if (response.ok && result.success) {
+                alert(`Payment reminder sent successfully to ${item.userName} (${item.userEmail})`);
+                // Refresh payment data after triggering
+                fetchPayments(selectedMonth);
+            } else {
+                alert(result.message || "Failed to send payment reminder");
+            }
+        } catch (error) {
+            console.error("Individual payment action error:", error);
+            alert("Network error. Please try again.");
+        }
+    };
+
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         // You could add a toast notification here
@@ -256,7 +308,8 @@ export default function PaymentManagement() {
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     {/* <Button variant="outlined" startIcon={<DownloadIcon />} sx={{ borderRadius: 2 }}>Export CSV</Button> */}
-                    <Button 
+                    {/* Temporarily commented out - can be re-enabled later */}
+                    {/* <Button 
                         variant="contained" 
                         color="secondary" 
                         sx={{ borderRadius: 2 }}
@@ -264,7 +317,7 @@ export default function PaymentManagement() {
                         disabled={triggerLoading}
                     >
                         {triggerLoading ? 'Triggering...' : 'Trigger Payment Links'}
-                    </Button>
+                    </Button> */}
                 </Box>
             </Box>
 
@@ -419,7 +472,12 @@ export default function PaymentManagement() {
                                         </TableCell>
                                         <TableCell>{formatDate(item.date)}</TableCell>
                                         <TableCell>
-                                            <IconButton size="small" title="Send Reminder" disabled={item.status === 'paid'}>
+                                            <IconButton 
+                                                size="small" 
+                                                title="Send Reminder" 
+                                                disabled={item.status === 'paid'}
+                                                onClick={() => handleIndividualPaymentAction(item)}
+                                            >
                                                 <SendIcon fontSize="small" color={item.status === 'paid' ? 'disabled' : 'primary'} />
                                             </IconButton>
                                         </TableCell>
