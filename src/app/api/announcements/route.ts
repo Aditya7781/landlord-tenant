@@ -3,14 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 const FETCH_ANNOUNCEMENTS_API = "https://ntqffznzmh.execute-api.ap-south-1.amazonaws.com/dev/fetch_announcement";
 
 export async function GET(request: NextRequest) {
-  console.log("[api/announcements] GET route called!");
   
   try {
     const authHeader = request.headers.get("authorization");
-    console.log("[api/announcements] Auth header:", authHeader ? "Present" : "Missing");
     
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("[api/announcements] Invalid auth header format");
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
@@ -18,7 +15,6 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    console.log("[api/announcements] Token extracted, length:", token.length);
 
     // Add timeout to prevent hanging requests
     const controller = new AbortController();
@@ -34,11 +30,9 @@ export async function GET(request: NextRequest) {
     });
 
     clearTimeout(timeoutId);
-    console.log("[api/announcements] Backend response status:", response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.log("[api/announcements] Backend error response:", errorText);
       return NextResponse.json(
         {
           success: false,
@@ -49,7 +43,6 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log("[api/announcements] Backend response:", data);
 
     return NextResponse.json({
       success: true,
@@ -57,7 +50,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Fetch announcements API error:", error);
     
     // Handle different types of errors
     if (error instanceof Error) {

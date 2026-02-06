@@ -1322,7 +1322,7 @@ export default function UserManagement() {
 
           <Grid container spacing={3}>
             {/* Status Filter */}
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth>
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -1340,7 +1340,7 @@ export default function UserManagement() {
             </Grid>
 
             {/* Allocation Filter */}
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth>
                 <InputLabel>Allocation Status</InputLabel>
                 <Select
@@ -1357,7 +1357,7 @@ export default function UserManagement() {
             </Grid>
 
             {/* Room Filter */}
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth>
                 <InputLabel>Room Number</InputLabel>
                 <Select

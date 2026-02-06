@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 const GET_USERS_PAYMENT_STATUS_API = "https://ntqffznzmh.execute-api.ap-south-1.amazonaws.com/dev/get_users_payment_status";
 
 export async function GET(request: NextRequest) {
-  console.log("[api/admin/payments] Route called!");
+
   
   try {
     const authHeader = request.headers.get("authorization");
-    console.log("[api/admin/payments] Auth header:", authHeader ? "Present" : "Missing");
+
     
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("[api/admin/payments] Invalid auth header format");
+
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    console.log("[api/admin/payments] Token extracted, length:", token.length);
+
 
     // Add timeout to prevent hanging requests
     const controller = new AbortController();
@@ -34,11 +34,11 @@ export async function GET(request: NextRequest) {
     });
 
     clearTimeout(timeoutId);
-    console.log("[api/admin/payments] Backend response status:", response.status);
+
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.log("[api/admin/payments] Backend error response:", errorText);
+
       return NextResponse.json(
         {
           success: false,
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log("[api/admin/payments] Backend response:", data);
+
 
     return NextResponse.json(data);
   } catch (error) {

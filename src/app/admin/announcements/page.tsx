@@ -45,6 +45,8 @@ interface AnnouncementForm {
 
 interface Announcement {
   id?: string;
+  SK?: string;
+  PK?: string;
   title: string;
   message: string;
   createdAt?: string;
@@ -149,7 +151,7 @@ export default function AnnouncementManagement() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          id: announcementToDelete.id,
+          sk: announcementToDelete.SK,
         }),
       });
 

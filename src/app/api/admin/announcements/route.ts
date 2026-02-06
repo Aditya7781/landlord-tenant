@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const SEND_ANNOUNCEMENT_API = "https://ntqffznzmh.execute-api.ap-south-1.amazonaws.com/dev/send_announcement";
-const DELETE_ANNOUNCEMENT_API = "https://ntqffznzmh.execute-api.ap-south-1.amazonaws.com/dev/delete_announcement";
+const DELETE_ANNOUNCEMENT_API = "https://ntqffznzmh.execute-api.ap-south-1.amazonaws.com/dev/delete_annoucement";
 
 export async function POST(request: NextRequest) {
-  console.log("[api/admin/announcements] POST route called!");
   
   try {
     const authHeader = request.headers.get("authorization");
-    console.log("[api/admin/announcements] Auth header:", authHeader ? "Present" : "Missing");
     
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("[api/admin/announcements] Invalid auth header format");
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
@@ -19,17 +16,14 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    console.log("[api/admin/announcements] Token extracted, length:", token.length);
 
     // Parse request body
     const body = await request.json();
-    console.log("[api/admin/announcements] Request body:", body);
 
     const { title, message } = body;
 
     // Validate required fields
     if (!title || !message) {
-      console.log("[api/admin/announcements] Missing required fields:", { title: !!title, message: !!message });
       return NextResponse.json(
         { success: false, message: "Title and message are required" },
         { status: 400 }
@@ -54,11 +48,9 @@ export async function POST(request: NextRequest) {
     });
 
     clearTimeout(timeoutId);
-    console.log("[api/admin/announcements] Backend response status:", response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.log("[api/admin/announcements] Backend error response:", errorText);
       return NextResponse.json(
         {
           success: false,
@@ -69,7 +61,6 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log("[api/admin/announcements] Backend response:", data);
 
     return NextResponse.json({
       success: true,
@@ -114,14 +105,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  console.log("[api/admin/announcements] DELETE route called!");
   
   try {
     const authHeader = request.headers.get("authorization");
-    console.log("[api/admin/announcements] Auth header:", authHeader ? "Present" : "Missing");
     
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("[api/admin/announcements] Invalid auth header format");
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
@@ -129,19 +117,16 @@ export async function DELETE(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    console.log("[api/admin/announcements] Token extracted, length:", token.length);
 
-    // Parse request body to get announcement ID
+    // Parse request body to get announcement SK
     const body = await request.json();
-    console.log("[api/admin/announcements] Request body:", body);
 
-    const { id } = body;
+    const { sk } = body;
 
     // Validate required fields
-    if (!id) {
-      console.log("[api/admin/announcements] Missing announcement ID");
+    if (!sk) {
       return NextResponse.json(
-        { success: false, message: "Announcement ID is required" },
+        { success: false, message: "Announcement SK is required" },
         { status: 400 }
       );
     }
@@ -157,17 +142,15 @@ export async function DELETE(request: NextRequest) {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        id,
+        sk,
       }),
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
-    console.log("[api/admin/announcements] Backend response status:", response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.log("[api/admin/announcements] Backend error response:", errorText);
       return NextResponse.json(
         {
           success: false,
@@ -178,7 +161,6 @@ export async function DELETE(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log("[api/admin/announcements] Backend response:", data);
 
     return NextResponse.json({
       success: true,
