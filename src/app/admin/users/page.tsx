@@ -434,7 +434,7 @@ export default function UserManagement() {
           window.location.reload();
         }
       } else {
-        alert(data.message || "Failed to unassign room");
+        alert("Beds with pending payment cannot be unassigned");
       }
     } catch (error) {
       console.error("Unassign room error:", error);

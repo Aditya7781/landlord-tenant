@@ -372,7 +372,7 @@ export default function ProfileContent({ role }: ProfileContentProps) {
                     : `${formData.firstName[0] || "U"}${formData.lastName[0] || "S"}`.toUpperCase()
                 )}
               </Avatar>
-              <IconButton
+              {/* <IconButton
                 sx={{
                   position: "absolute",
                   bottom: 0,
@@ -386,7 +386,7 @@ export default function ProfileContent({ role }: ProfileContentProps) {
               >
                 <CameraIcon fontSize="small" />
                 <input type="file" hidden accept="image/*" />
-              </IconButton>
+              </IconButton> */}
             </Box>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               {formData.firstName} {formData.lastName}
@@ -448,7 +448,7 @@ export default function ProfileContent({ role }: ProfileContentProps) {
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 Account Details
               </Typography>
-              {/* {!isEditing && !loading && (
+              {!isEditing && !loading && role === "admin" && (
                 <Button
                   startIcon={<EditIcon />}
                   size="small"
@@ -456,7 +456,7 @@ export default function ProfileContent({ role }: ProfileContentProps) {
                 >
                   Edit Profile
                 </Button>
-              )} */}
+              )} 
             </Box>
 
             {loading ? (

@@ -177,10 +177,27 @@ export default function RoomManagement() {
         alert(data.message || "Room deleted successfully");
         setDeleteOpen(false);
         setSelectedRoomId(null);
-        // Refresh the rooms list
-        window.location.reload();
+        // Add a small delay to ensure modal closes before reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
       } else {
-        alert(data.message || "Failed to delete room");
+        // Handle specific error messages with user-friendly alternatives
+        let errorMessage = data.message || "Failed to delete room";
+        
+        // Check for common error patterns and provide better user messages
+        if (errorMessage.toLowerCase().includes("occupied") || 
+            errorMessage.toLowerCase().includes("vacant") ||
+            errorMessage.toLowerCase().includes("bed") ||
+            errorMessage.toLowerCase().includes("tenant")) {
+          errorMessage = "Room needs to be vacant to be deleted. Please remove all tenants from the room first.";
+        } else if (errorMessage.toLowerCase().includes("not found")) {
+          errorMessage = "Room not found. It may have already been deleted.";
+        } else if (errorMessage.toLowerCase().includes("unauthorized")) {
+          errorMessage = "You don't have permission to delete rooms.";
+        }
+        
+        alert(errorMessage);
       }
     } catch (error) {
       console.error("Delete room error:", error);
@@ -412,15 +429,47 @@ export default function RoomManagement() {
         <DialogTitle>Delete Room</DialogTitle>
 
         <DialogContent>
-          <Typography>
+          <Typography sx={{ mb: 2 }}>
             Are you sure you want to delete this room? This action cannot be
             undone.
           </Typography>
+          {(() => {
+            const room = rooms.find(r => r.id === selectedRoomId);
+            const isOccupied = room && room.occupiedBeds > 0;
+            
+            if (isOccupied) {
+              return (
+                <Box sx={{ 
+                  p: 2, 
+                  bgcolor: 'warning.light', 
+                  borderRadius: 1, 
+                  border: '1px solid',
+                  borderColor: 'warning.main'
+                }}>
+                  <Typography variant="body2" color="warning.dark" sx={{ fontWeight: 600 }}>
+                    ⚠️ Room is currently occupied
+                  </Typography>
+                  <Typography variant="caption" color="warning.dark" sx={{ display: 'block', mt: 1 }}>
+                    This room has {room.occupiedBeds} occupied bed(s). You must remove all tenants before deleting the room.
+                  </Typography>
+                </Box>
+              );
+            }
+            return null;
+          })()}
         </DialogContent>
 
         <DialogActions>
           <Button onClick={() => setDeleteOpen(false)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleDeleteRoom}>
+          <Button 
+            variant="contained" 
+            color="error" 
+            onClick={handleDeleteRoom}
+            disabled={(() => {
+              const room = rooms.find(r => r.id === selectedRoomId);
+              return room && room.occupiedBeds > 0;
+            })()}
+          >
             Delete
           </Button>
         </DialogActions>
