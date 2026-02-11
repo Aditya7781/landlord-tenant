@@ -505,7 +505,7 @@ export default function PaymentHistory() {
                 
                 doc.setTextColor(0, 0, 0);
                 doc.setFontSize(11);
-                doc.text(selectedPayment.receipt, leftCol, detailsY + lineHeight);
+                doc.text(selectedPayment.receipt || 'N/A', leftCol, detailsY + lineHeight);
                 doc.text(formatDate(selectedPayment.createdAt), rightCol, detailsY + lineHeight);
                 
                 doc.setTextColor(100, 100, 100);
@@ -519,8 +519,11 @@ export default function PaymentHistory() {
                 
                 // Status badge
                 const statusText = selectedPayment.status.toUpperCase();
-                const statusColor = selectedPayment.status === 'paid' ? [46, 125, 50] : [245, 124, 0];
-                doc.setTextColor(...statusColor);
+                if (selectedPayment.status === 'paid') {
+                  doc.setTextColor(46, 125, 50);
+                } else {
+                  doc.setTextColor(245, 124, 0);
+                }
                 doc.text(statusText, rightCol, detailsY + lineHeight * 4);
                 
                 // Amount Details Section
