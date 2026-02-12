@@ -46,6 +46,8 @@ import {
   CalendarToday as CalendarIcon,
   Description as DocumentIcon,
   Visibility as ViewIcon,
+  ArrowUpward as ArrowUpIcon,
+  ArrowDownward as ArrowDownIcon,
 } from "@mui/icons-material";
 
 interface Allocation {
@@ -123,6 +125,9 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const token = getCookieValue("session_token");
   const [loading, setLoading] = useState(!!token);
+
+  // Sorting states
+  const [residentSortOrder, setResidentSortOrder] = useState<'asc' | 'desc' | null>(null);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editStatus, setEditStatus] = useState("");
@@ -260,7 +265,21 @@ export default function UserManagement() {
       
       return matchesSearch && matchesStatus && matchesAllocation && matchesRoom;
     }
-  );
+  ).sort((a, b) => {
+    // Apply resident name sorting if active
+    if (residentSortOrder) {
+      const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+      const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+      if (residentSortOrder === 'asc') {
+        return nameA.localeCompare(nameB);
+      } else {
+        return nameB.localeCompare(nameA);
+      }
+    }
+    
+    // Default sort: no specific order
+    return 0;
+  });
   
   // Get unique room numbers for filter dropdown
   const availableRooms = Array.from(
@@ -588,7 +607,25 @@ export default function UserManagement() {
         <Table>
           <TableHead sx={{ bgcolor: "action.hover" }}>
             <TableRow>
-              <TableCell sx={{ fontWeight: 700 }}>Resident</TableCell>
+              <TableCell 
+                sx={{ fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => {
+                  if (residentSortOrder === 'asc') {
+                    setResidentSortOrder('desc');
+                  } else if (residentSortOrder === 'desc') {
+                    setResidentSortOrder(null);
+                  } else {
+                    setResidentSortOrder('asc');
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  Resident
+                  {residentSortOrder && (
+                    residentSortOrder === 'asc' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />
+                  )}
+                </Box>
+              </TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Allocation</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>

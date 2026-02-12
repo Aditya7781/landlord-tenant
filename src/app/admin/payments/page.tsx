@@ -37,7 +37,9 @@ import {
     Hotel as HotelIcon,
     CheckCircle as CheckCircleIcon,
     Error as ErrorIcon,
-    ContentCopy as CopyIcon
+    ContentCopy as CopyIcon,
+    ArrowUpward as ArrowUpIcon,
+    ArrowDownward as ArrowDownIcon,
 } from '@mui/icons-material';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 
@@ -116,6 +118,10 @@ export default function PaymentManagement() {
     const [triggerLoading, setTriggerLoading] = useState(false);
     const [triggerResult, setTriggerResult] = useState<TriggerResponse | null>(null);
     const token = getCookieValue("session_token");
+
+    // Sorting states
+    const [userSortOrder, setUserSortOrder] = useState<'asc' | 'desc' | null>(null);
+    const [paymentStatusSortOrder, setPaymentStatusSortOrder] = useState<'asc' | 'desc' | null>(null);
 
     const fetchPayments = async (month?: string) => {
         
@@ -267,7 +273,32 @@ export default function PaymentManagement() {
         item.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.roomNo && item.roomNo.includes(searchTerm)) ||
         (item.bedName && item.bedName.includes(searchTerm))
-    ) || [];
+    ).sort((a, b) => {
+        // Apply user name sorting if active
+        if (userSortOrder) {
+            const nameA = a.userName.toLowerCase();
+            const nameB = b.userName.toLowerCase();
+            if (userSortOrder === 'asc') {
+                return nameA.localeCompare(nameB);
+            } else {
+                return nameB.localeCompare(nameA);
+            }
+        }
+        
+        // Apply status sorting if active
+        if (paymentStatusSortOrder) {
+            const statusA = a.status.toLowerCase();
+            const statusB = b.status.toLowerCase();
+            if (paymentStatusSortOrder === 'asc') {
+                return statusA.localeCompare(statusB);
+            } else {
+                return statusB.localeCompare(statusA);
+            }
+        }
+        
+        // Default sort: no specific order
+        return 0;
+    }) || [];
 
     // Get available months from monthlyBreakdown
     const availableMonths = data?.stats.monthlyBreakdown
@@ -402,11 +433,49 @@ export default function PaymentManagement() {
                     <Table>
                         <TableHead sx={{ bgcolor: 'action.hover' }}>
                             <TableRow>
-                                <TableCell sx={{ fontWeight: 700 }}>User</TableCell>
+                                <TableCell 
+                                    sx={{ fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}
+                                    onClick={() => {
+                                        if (userSortOrder === 'asc') {
+                                            setUserSortOrder('desc');
+                                        } else if (userSortOrder === 'desc') {
+                                            setUserSortOrder(null);
+                                        } else {
+                                            setUserSortOrder('asc');
+                                        }
+                                        setPaymentStatusSortOrder(null); // Reset other sort
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        User
+                                        {userSortOrder && (
+                                            userSortOrder === 'asc' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />
+                                        )}
+                                    </Box>
+                                </TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Room / Bed</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Month</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                                <TableCell 
+                                    sx={{ fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}
+                                    onClick={() => {
+                                        if (paymentStatusSortOrder === 'asc') {
+                                            setPaymentStatusSortOrder('desc');
+                                        } else if (paymentStatusSortOrder === 'desc') {
+                                            setPaymentStatusSortOrder(null);
+                                        } else {
+                                            setPaymentStatusSortOrder('asc');
+                                        }
+                                        setUserSortOrder(null); // Reset other sort
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        Status
+                                        {paymentStatusSortOrder && (
+                                            paymentStatusSortOrder === 'asc' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />
+                                        )}
+                                    </Box>
+                                </TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
                             </TableRow>

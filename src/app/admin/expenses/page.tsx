@@ -40,6 +40,8 @@ import {
     TrendingDown as TrendingDownIcon,
     CheckCircle as CheckCircleIcon,
     HourglassEmpty as PendingIcon,
+    ArrowUpward as ArrowUpIcon,
+    ArrowDownward as ArrowDownIcon,
 } from '@mui/icons-material';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 
@@ -127,6 +129,10 @@ export default function ExpenseManagement() {
     const [searchTerm, setSearchTerm] = useState('');
     const [professionFilter, setProfessionFilter] = useState<string>('all');
     const token = getCookieValue("session_token");
+
+    // Sorting states
+    const [nameSortOrder, setNameSortOrder] = useState<'asc' | 'desc' | null>(null);
+    const [statusSortOrder, setStatusSortOrder] = useState<'asc' | 'desc' | null>(null);
 
     // Create dialog
     const [createOpen, setCreateOpen] = useState(false);
@@ -386,7 +392,32 @@ export default function ExpenseManagement() {
                 professionFilter === 'all' || item.expenseType.toLowerCase() === professionFilter;
             return matchesSearch && matchesProfession;
         })
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        .sort((a, b) => {
+            // Apply name sorting if active
+            if (nameSortOrder) {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+                if (nameSortOrder === 'asc') {
+                    return nameA.localeCompare(nameB);
+                } else {
+                    return nameB.localeCompare(nameA);
+                }
+            }
+            
+            // Apply status sorting if active
+            if (statusSortOrder) {
+                const statusA = a.status.toLowerCase();
+                const statusB = b.status.toLowerCase();
+                if (statusSortOrder === 'asc') {
+                    return statusA.localeCompare(statusB);
+                } else {
+                    return statusB.localeCompare(statusA);
+                }
+            }
+            
+            // Default sort: newest first by createdAt
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
 
     const formatDate = (dateString: string) => {
         try {
@@ -543,11 +574,49 @@ export default function ExpenseManagement() {
                     <Table>
                         <TableHead sx={{ bgcolor: 'action.hover' }}>
                             <TableRow>
-                                <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
+                                <TableCell 
+                                    sx={{ fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}
+                                    onClick={() => {
+                                        if (nameSortOrder === 'asc') {
+                                            setNameSortOrder('desc');
+                                        } else if (nameSortOrder === 'desc') {
+                                            setNameSortOrder(null);
+                                        } else {
+                                            setNameSortOrder('asc');
+                                        }
+                                        setStatusSortOrder(null); // Reset other sort
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        Name
+                                        {nameSortOrder && (
+                                            nameSortOrder === 'asc' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />
+                                        )}
+                                    </Box>
+                                </TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Payment</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                                <TableCell 
+                                    sx={{ fontWeight: 700, cursor: 'pointer', userSelect: 'none' }}
+                                    onClick={() => {
+                                        if (statusSortOrder === 'asc') {
+                                            setStatusSortOrder('desc');
+                                        } else if (statusSortOrder === 'desc') {
+                                            setStatusSortOrder(null);
+                                        } else {
+                                            setStatusSortOrder('asc');
+                                        }
+                                        setNameSortOrder(null); // Reset other sort
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        Status
+                                        {statusSortOrder && (
+                                            statusSortOrder === 'asc' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />
+                                        )}
+                                    </Box>
+                                </TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
