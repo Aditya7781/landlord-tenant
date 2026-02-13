@@ -4,7 +4,6 @@ const GET_USERS_PAYMENT_STATUS_API = "https://ntqffznzmh.execute-api.ap-south-1.
 
 export async function GET(request: NextRequest) {
 
-  
   try {
     const authHeader = request.headers.get("authorization");
 
@@ -19,12 +18,25 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7);
 
+    // Get month query parameter if present
+    const { searchParams } = new URL(request.url);
+    const month = searchParams.get('month');
+
+    // Build API URL with month filter if provided
+    let apiUrl = GET_USERS_PAYMENT_STATUS_API;
+    if (month && month !== 'all') {
+      apiUrl += `?month=${encodeURIComponent(month)}`;
+      console.log('Filtering payments by month:', month);
+    } else {
+      console.log('Fetching all payments (no month filter)');
+    }
+
 
     // Add timeout to prevent hanging requests
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-    const response = await fetch(GET_USERS_PAYMENT_STATUS_API, {
+    const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

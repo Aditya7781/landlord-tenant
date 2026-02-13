@@ -25,7 +25,8 @@ import {
     ExpandMore as ExpandMoreIcon,
     ExpandLess as ExpandLessIcon,
     AccessTime as TimeIcon,
-    Person as PersonIcon
+    Person as PersonIcon,
+    Delete as DeleteIcon
 } from '@mui/icons-material';
 
 const getCookieValue = (name: string): string | null => {
@@ -56,6 +57,8 @@ interface NotificationHistory {
     date?: string; // Added date field
     time?: string; // Added time field
     status?: string;
+    SK?: string; // Sort Key for deletion
+    PK?: string; // Partition Key for deletion
 }
 
 interface HistoryResponse {
@@ -159,6 +162,45 @@ export default function NotificationsPage() {
             fetchNotificationHistory();
         }
         setShowHistory(!showHistory);
+    };
+
+    const handleDeleteNotification = async (notification: NotificationHistory) => {
+        if (!token) {
+            setErrorMessage("No authentication token found");
+            return;
+        }
+
+        if (!notification.SK || !notification.PK) {
+            setErrorMessage("Cannot delete notification: Missing required keys");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/notifications", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    SK: notification.SK,
+                    PK: notification.PK
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setSuccessMessage("Notification deleted successfully!");
+                // Refresh the history to remove the deleted item
+                fetchNotificationHistory(readMoreValue);
+            } else {
+                setErrorMessage(data.message || "Failed to delete notification");
+            }
+        } catch (error) {
+            console.error("Delete notification error:", error);
+            setErrorMessage("Network error. Please try again.");
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -382,23 +424,36 @@ export default function NotificationsPage() {
                                         <Grid size={{ xs: 12, md: 6 }} key={index}>
                                             <Card variant="outlined" sx={{ height: '100%' }}>
                                                 <CardContent>
-                                                    <Box sx={{ mb: 2 }}>
-                                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                                                            {notification.title || 'No Title'}
-                                                        </Typography>
-                                                        <Typography 
-                                                            variant="body2" 
-                                                            color="text.secondary"
-                                                            sx={{ 
-                                                                mb: 2,
-                                                                display: '-webkit-box',
-                                                                WebkitLineClamp: 3,
-                                                                WebkitBoxOrient: 'vertical',
-                                                                overflow: 'hidden'
-                                                            }}
-                                                        >
-                                                            {notification.message || 'No Message'}
-                                                        </Typography>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                        <Box sx={{ mb: 2, flex: 1 }}>
+                                                            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                                                                {notification.title || 'No Title'}
+                                                            </Typography>
+                                                            <Typography 
+                                                                variant="body2" 
+                                                                color="text.secondary"
+                                                                sx={{ 
+                                                                    mb: 2,
+                                                                    display: '-webkit-box',
+                                                                    WebkitLineClamp: 3,
+                                                                    WebkitBoxOrient: 'vertical',
+                                                                    overflow: 'hidden'
+                                                                }}
+                                                            >
+                                                                {notification.message || 'No Message'}
+                                                            </Typography>
+                                                        </Box>
+                                                        {notification.SK && notification.PK && (
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={() => handleDeleteNotification(notification)}
+                                                                sx={{ ml: 1 }}
+                                                                title="Delete notification"
+                                                            >
+                                                                <DeleteIcon fontSize="small" />
+                                                            </IconButton>
+                                                        )}
                                                     </Box>
 
                                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>

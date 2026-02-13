@@ -18,6 +18,12 @@ const FETCH_NOTIFICATION_API =
 
 
 
+const DELETE_NOTIFICATION_API =
+
+  "https://ntqffznzmh.execute-api.ap-south-1.amazonaws.com/dev/delete_notification";
+
+
+
 /* ------------------ TOKEN HELPERS ------------------ */
 function getTokenFromCookie(cookieHeader: string | null): string | null {
   if (!cookieHeader) return null;
@@ -82,6 +88,58 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Fetch notification API error:", error);
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/* ------------------ DELETE NOTIFICATION ------------------ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    const match = authHeader?.match(/^Bearer\s+(.+)$/i);
+    let token = normalizeToken(match?.[1] || null);
+    if (!token) {
+      token = getTokenFromCookie(request.headers.get("cookie"));
+    }
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const { SK, PK } = await request.json();
+    if (!SK || !PK) {
+      return NextResponse.json(
+        { success: false, message: "Missing required fields: SK and PK" },
+        { status: 400 }
+      );
+    }
+
+    const response = await fetch(DELETE_NOTIFICATION_API, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ SK, PK }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { success: false, message: data?.message || "Failed to delete notification" },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Delete notification API error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }
