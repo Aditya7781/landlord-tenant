@@ -412,13 +412,18 @@ export default function DashboardLayout({
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 2, sm: 3 },
           mt: 8,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           transition: theme.transitions.create("margin", {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
           }),
+          // Mobile-specific improvements
+          ...(isMobile && {
+            minHeight: 'calc(100vh - 64px)',
+            overflowX: 'hidden'
+          })
         }}
       >
         {/* Persistent title */}

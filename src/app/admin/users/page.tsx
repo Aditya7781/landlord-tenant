@@ -48,6 +48,7 @@ import {
   Visibility as ViewIcon,
   ArrowUpward as ArrowUpIcon,
   ArrowDownward as ArrowDownIcon,
+  CloudUpload as UploadIcon,
 } from "@mui/icons-material";
 
 interface Allocation {
@@ -121,6 +122,14 @@ const getCookieValue = (name: string): string | null => {
   return null;
 };
 
+// Cache-busting utility for images
+const getCacheBustedUrl = (url: string | undefined): string => {
+  if (!url) return "";
+  const timestamp = Date.now();
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}_t=${timestamp}`;
+};
+
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const token = getCookieValue("session_token");
@@ -131,6 +140,25 @@ export default function UserManagement() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editStatus, setEditStatus] = useState("");
+  const [editFormData, setEditFormData] = useState({
+    email: "",
+    status: "",
+    firstName: "",
+    lastName: "",
+    fatherName: "",
+    motherName: "",
+    dateOfBirth: "",
+    permanentAddress: "",
+    password: "",
+    contactNo: "",
+    guardianContactNo: "",
+    highestQualification: "",
+    collegeOffice: "",
+    purposeOfLiving: "",
+  });
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string>("");
+  const [editLoading, setEditLoading] = useState(false);
   const [unassignOpen, setUnassignOpen] = useState(false);
   const [selectedAllocation, setSelectedAllocation] = useState<Allocation | null>(null);
   const [unassignLoading, setUnassignLoading] = useState(false);
@@ -361,37 +389,148 @@ export default function UserManagement() {
     }
   };
 
-  const handleUpdateStatus = async () => {
-    if (!selectedUser || !editStatus) {
-      alert("Please select a status");
+  const handleUpdateUser = async () => {
+    if (!selectedUser || !editFormData.email || !editFormData.status) {
+      alert("Please fill required fields: email and status");
       return;
     }
 
+    setEditLoading(true);
     try {
+      const formData = new FormData();
+      
+      // Add all form fields
+      formData.append('email', editFormData.email);
+      formData.append('status', editFormData.status);
+      
+      if (editFormData.firstName) formData.append('firstName', editFormData.firstName);
+      if (editFormData.lastName) formData.append('lastName', editFormData.lastName);
+      if (editFormData.fatherName) formData.append('fatherName', editFormData.fatherName);
+      if (editFormData.motherName) formData.append('motherName', editFormData.motherName);
+      if (editFormData.dateOfBirth) formData.append('dateOfBirth', editFormData.dateOfBirth);
+      if (editFormData.permanentAddress) formData.append('permanentAddress', editFormData.permanentAddress);
+      if (editFormData.password) formData.append('password', editFormData.password);
+      if (editFormData.contactNo) formData.append('contactNo', editFormData.contactNo);
+      if (editFormData.guardianContactNo) formData.append('guardianContactNo', editFormData.guardianContactNo);
+      if (editFormData.highestQualification) formData.append('highestQualification', editFormData.highestQualification);
+      if (editFormData.collegeOffice) formData.append('collegeOffice', editFormData.collegeOffice);
+      if (editFormData.purposeOfLiving) formData.append('purposeOfLiving', editFormData.purposeOfLiving);
+      
+      if (profileImageFile) {
+        formData.append('profileImage', profileImageFile);
+      }
+
       const response = await fetch("/api/users", {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          email: selectedUser.emailAddress,
-          status: editStatus,
-        }),
+        body: formData,
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        alert("Status updated successfully!");
+        alert("User updated successfully!");
         setEditOpen(false);
-        window.location.reload();
+        setProfileImageFile(null);
+        setProfileImagePreview("");
+        
+        // Update the user in the local state to avoid full page reload
+        setUsers(prevUsers => 
+          prevUsers.map(user => 
+            user.emailAddress === selectedUser?.emailAddress 
+              ? { 
+                  ...user, 
+                  firstName: editFormData.firstName || user.firstName,
+                  lastName: editFormData.lastName || user.lastName,
+                  status: editFormData.status
+                }
+              : user
+          )
+        );
+        
+        // If user details dialog is open, refresh that data too
+        if (userDetails && userDetails.emailAddress === selectedUser?.emailAddress) {
+          handleOpenUserDetails(selectedUser.emailAddress);
+        }
       } else {
-        alert(data.message || "Failed to update status");
+        alert(data.message || "Failed to update user");
       }
     } catch (error) {
-      console.error("Update status error:", error);
+      console.error("Update user error:", error);
       alert("Network error. Please try again.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleOpenEdit = async (user: User) => {
+    setSelectedUser(user);
+    setEditFormData({
+      email: user.emailAddress,
+      status: user.status || "",
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      fatherName: "",
+      motherName: "",
+      dateOfBirth: "",
+      permanentAddress: "",
+      password: "",
+      contactNo: "",
+      guardianContactNo: "",
+      highestQualification: "",
+      collegeOffice: "",
+      purposeOfLiving: "",
+    });
+    setProfileImageFile(null);
+    setProfileImagePreview("");
+    
+    // Fetch detailed user info to populate the form
+    try {
+      const response = await fetch(`/api/users/info?email=${encodeURIComponent(user.emailAddress)}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          const userInfo = data.user;
+          setEditFormData(prev => ({
+            ...prev,
+            firstName: userInfo.firstName || prev.firstName,
+            lastName: userInfo.lastName || prev.lastName,
+            fatherName: userInfo.fatherName || "",
+            motherName: userInfo.motherName || "",
+            dateOfBirth: userInfo.dateOfBirth || "",
+            permanentAddress: userInfo.permanentAddress || "",
+            contactNo: userInfo.contactNo || "",
+            guardianContactNo: userInfo.guardianContactNo || "",
+            highestQualification: userInfo.education?.highestQualification || "",
+            collegeOffice: userInfo.education?.collegeOffice || "",
+            purposeOfLiving: userInfo.education?.purposeOfLiving || "",
+          }));
+          setProfileImagePreview(userInfo.documents?.profilePhoto || "");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch user details:", error);
+    }
+    
+    setEditOpen(true);
+  };
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setProfileImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -769,11 +908,7 @@ export default function UserManagement() {
                     )} */}
                     <IconButton
                       size="small"
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setEditStatus(user.status || "");
-                        setEditOpen(true);
-                      }}
+                      onClick={() => handleOpenEdit(user)}
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
@@ -918,19 +1053,19 @@ export default function UserManagement() {
         </DialogActions>
       </Dialog>
 
-      {/* ---------- Edit User Status Dialog ---------- */}
+      {/* ---------- Edit User Dialog ---------- */}
       <Dialog
         open={editOpen}
         onClose={() => setEditOpen(false)}
         fullWidth
-        maxWidth="xs"
+        maxWidth="md"
         PaperProps={{ sx: { borderRadius: 4 } }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>Update User Status</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800 }}>Edit User Information</DialogTitle>
 
-        <DialogContent>
-          <Typography sx={{ mb: 2, color: "text.secondary" }}>
-            Updating status for{" "}
+        <DialogContent sx={{ pb: 2 }}>
+          <Typography sx={{ mb: 3, color: "text.secondary" }}>
+            Editing information for{" "}
             <Box
               component="span"
               sx={{ fontWeight: 700, color: "text.primary" }}
@@ -939,37 +1074,201 @@ export default function UserManagement() {
             </Box>
           </Typography>
 
-          <TextField
-            id="user-status"
-            select
-            fullWidth
-            label="Status"
-            value={editStatus}
-            onChange={(e) => setEditStatus(e.target.value)}
-            SelectProps={{
-              native: true,
-              inputProps: {
-                "aria-label": "User status",
-              },
-            }}
-          >
-            <option value="">Select status</option>
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="inactive">Inactive</option>
-          </TextField>
+          {/* Profile Image Upload */}
+          <Box sx={{ mb: 3, textAlign: "center" }}>
+            <Avatar
+              src={getCacheBustedUrl(profileImagePreview)}
+              sx={{ width: 80, height: 80, mx: "auto", mb: 2 }}
+            >
+              {editFormData.firstName?.[0] || "U"}
+            </Avatar>
+            <Button
+              component="label"
+              variant="outlined"
+              startIcon={<UploadIcon />}
+              sx={{ borderRadius: 2 }}
+            >
+              Upload Profile Image
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+            </Button>
+            {profileImageFile && (
+              <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                Selected: {profileImageFile.name}
+              </Typography>
+            )}
+          </Box>
+
+          <Grid container spacing={2}>
+            {/* Basic Information */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Email"
+                value={editFormData.email}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                margin="normal"
+                required
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                select
+                label="Status"
+                value={editFormData.status}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
+                margin="normal"
+                required
+                SelectProps={{ native: true }}
+              >
+                <option value="">Select status</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="inactive">Inactive</option>
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="First Name"
+                value={editFormData.firstName}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Last Name"
+                value={editFormData.lastName}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Father's Name"
+                value={editFormData.fatherName}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, fatherName: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Mother's Name"
+                value={editFormData.motherName}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, motherName: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Date of Birth"
+                type="date"
+                value={editFormData.dateOfBirth}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                margin="normal"
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Contact Number"
+                value={editFormData.contactNo}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, contactNo: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Guardian Contact"
+                value={editFormData.guardianContactNo}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, guardianContactNo: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="New Password (leave blank to keep current)"
+                type="password"
+                value={editFormData.password}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, password: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+
+            {/* Address */}
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Permanent Address"
+                multiline
+                rows={2}
+                value={editFormData.permanentAddress}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, permanentAddress: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+
+            {/* Education Information */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Highest Qualification"
+                value={editFormData.highestQualification}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, highestQualification: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="College/Office"
+                value={editFormData.collegeOffice}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, collegeOffice: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Purpose of Living"
+                multiline
+                rows={2}
+                value={editFormData.purposeOfLiving}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, purposeOfLiving: e.target.value }))}
+                margin="normal"
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
 
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setEditOpen(false)} sx={{ fontWeight: 700 }}>
+          <Button 
+            onClick={() => setEditOpen(false)} 
+            sx={{ fontWeight: 700 }}
+            disabled={editLoading}
+          >
             Cancel
           </Button>
           <Button
             variant="contained"
             sx={{ px: 3, fontWeight: 700 }}
-            onClick={handleUpdateStatus}
+            onClick={handleUpdateUser}
+            disabled={editLoading}
           >
-            Update
+            {editLoading ? "Updating..." : "Update User"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1070,7 +1369,7 @@ export default function UserManagement() {
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             {userDetails?.documents?.profilePhoto ? (
               <Avatar
-                src={userDetails.documents.profilePhoto}
+                src={getCacheBustedUrl(userDetails.documents.profilePhoto)}
                 sx={{ width: 60, height: 60 }}
               />
             ) : (

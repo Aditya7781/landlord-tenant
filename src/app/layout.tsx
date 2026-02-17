@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   description: "Modern web-based hostel and lodge management system",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
+
 export default async function RootLayout({
   children,
 }: {

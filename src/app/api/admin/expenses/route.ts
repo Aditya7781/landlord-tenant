@@ -99,6 +99,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle receipt - if it's an object with uploadUrl, extract the URL
+    const receiptUrl = receipt && typeof receipt === 'object' && receipt.uploadUrl 
+      ? receipt.uploadUrl 
+      : receipt;
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -113,7 +118,7 @@ export async function POST(request: NextRequest) {
         amount,
         expenseType,
         paymentType,
-        receipt,
+        receipt: receiptUrl,
         description,
         status,
         paidAt,
