@@ -158,6 +158,12 @@ export default function UserManagement() {
   });
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string>("");
+  const [aadharFrontFile, setAadharFrontFile] = useState<File | null>(null);
+  const [aadharFrontPreview, setAadharFrontPreview] = useState<string>("");
+  const [aadharBackFile, setAadharBackFile] = useState<File | null>(null);
+  const [aadharBackPreview, setAadharBackPreview] = useState<string>("");
+  const [idProofFile, setIdProofFile] = useState<File | null>(null);
+  const [idProofPreview, setIdProofPreview] = useState<string>("");
   const [editLoading, setEditLoading] = useState(false);
   const [unassignOpen, setUnassignOpen] = useState(false);
   const [selectedAllocation, setSelectedAllocation] = useState<Allocation | null>(null);
@@ -419,6 +425,15 @@ export default function UserManagement() {
       if (profileImageFile) {
         formData.append('profileImage', profileImageFile);
       }
+      if (aadharFrontFile) {
+        formData.append('aadharFront', aadharFrontFile);
+      }
+      if (aadharBackFile) {
+        formData.append('aadharBack', aadharBackFile);
+      }
+      if (idProofFile) {
+        formData.append('idProof', idProofFile);
+      }
 
       const response = await fetch("/api/users", {
         method: "PUT",
@@ -435,6 +450,12 @@ export default function UserManagement() {
         setEditOpen(false);
         setProfileImageFile(null);
         setProfileImagePreview("");
+        setAadharFrontFile(null);
+        setAadharFrontPreview("");
+        setAadharBackFile(null);
+        setAadharBackPreview("");
+        setIdProofFile(null);
+        setIdProofPreview("");
         
         // Update the user in the local state to avoid full page reload
         setUsers(prevUsers => 
@@ -485,6 +506,12 @@ export default function UserManagement() {
     });
     setProfileImageFile(null);
     setProfileImagePreview("");
+    setAadharFrontFile(null);
+    setAadharFrontPreview("");
+    setAadharBackFile(null);
+    setAadharBackPreview("");
+    setIdProofFile(null);
+    setIdProofPreview("");
     
     // Fetch detailed user info to populate the form
     try {
@@ -513,6 +540,9 @@ export default function UserManagement() {
             purposeOfLiving: userInfo.education?.purposeOfLiving || "",
           }));
           setProfileImagePreview(userInfo.documents?.profilePhoto || "");
+          setAadharFrontPreview(userInfo.documents?.aadharFront || "");
+          setAadharBackPreview(userInfo.documents?.aadharBack || "");
+          setIdProofPreview(userInfo.documents?.idProof || "");
         }
       }
     } catch (error) {
@@ -529,6 +559,42 @@ export default function UserManagement() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAadharFrontChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setAadharFrontFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAadharFrontPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAadharBackChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setAadharBackFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAadharBackPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleIdProofChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setIdProofFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setIdProofPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -1250,6 +1316,142 @@ export default function UserManagement() {
                 onChange={(e) => setEditFormData(prev => ({ ...prev, purposeOfLiving: e.target.value }))}
                 margin="normal"
               />
+            </Grid>
+
+            {/* Document Uploads */}
+            <Grid size={{ xs: 12 }}>
+              <Box sx={{ mt: 2, mb: 2 }}>
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  Documents
+                </Typography>
+                <Grid container spacing={2}>
+                  {/* Aadhar Front */}
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2, textAlign: 'center' }}>
+                      <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                        Aadhar Card (Front)
+                      </Typography>
+                      {aadharFrontPreview ? (
+                        <Box sx={{ mb: 1 }}>
+                          <img 
+                            src={getCacheBustedUrl(aadharFrontPreview)} 
+                            alt="Aadhar Front" 
+                            style={{ maxWidth: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px' }}
+                          />
+                        </Box>
+                      ) : (
+                        <Box sx={{ mb: 1, height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100', borderRadius: '4px' }}>
+                          <DocumentIcon sx={{ fontSize: 32, color: 'grey.400' }} />
+                        </Box>
+                      )}
+                      <Button
+                        component="label"
+                        variant="outlined"
+                        size="small"
+                        startIcon={<UploadIcon />}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        {aadharFrontPreview ? 'Change' : 'Upload'}
+                        <input
+                          type="file"
+                          hidden
+                          accept="image/*"
+                          onChange={handleAadharFrontChange}
+                        />
+                      </Button>
+                      {aadharFrontFile && (
+                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                          Selected: {aadharFrontFile.name}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Grid>
+
+                  {/* Aadhar Back */}
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2, textAlign: 'center' }}>
+                      <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                        Aadhar Card (Back)
+                      </Typography>
+                      {aadharBackPreview ? (
+                        <Box sx={{ mb: 1 }}>
+                          <img 
+                            src={getCacheBustedUrl(aadharBackPreview)} 
+                            alt="Aadhar Back" 
+                            style={{ maxWidth: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px' }}
+                          />
+                        </Box>
+                      ) : (
+                        <Box sx={{ mb: 1, height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100', borderRadius: '4px' }}>
+                          <DocumentIcon sx={{ fontSize: 32, color: 'grey.400' }} />
+                        </Box>
+                      )}
+                      <Button
+                        component="label"
+                        variant="outlined"
+                        size="small"
+                        startIcon={<UploadIcon />}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        {aadharBackPreview ? 'Change' : 'Upload'}
+                        <input
+                          type="file"
+                          hidden
+                          accept="image/*"
+                          onChange={handleAadharBackChange}
+                        />
+                      </Button>
+                      {aadharBackFile && (
+                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                          Selected: {aadharBackFile.name}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Grid>
+
+                  {/* ID Proof */}
+                  <Grid size={{ xs: 12 }}>
+                    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2, textAlign: 'center' }}>
+                      <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                        ID Proof
+                      </Typography>
+                      {idProofPreview ? (
+                        <Box sx={{ mb: 1 }}>
+                          <img 
+                            src={getCacheBustedUrl(idProofPreview)} 
+                            alt="ID Proof" 
+                            style={{ maxWidth: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px' }}
+                          />
+                        </Box>
+                      ) : (
+                        <Box sx={{ mb: 1, height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100', borderRadius: '4px' }}>
+                          <DocumentIcon sx={{ fontSize: 32, color: 'grey.400' }} />
+                        </Box>
+                      )}
+                      <Button
+                        component="label"
+                        variant="outlined"
+                        size="small"
+                        startIcon={<UploadIcon />}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        {idProofPreview ? 'Change' : 'Upload'}
+                        <input
+                          type="file"
+                          hidden
+                          accept="image/*"
+                          onChange={handleIdProofChange}
+                        />
+                      </Button>
+                      {idProofFile && (
+                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                          Selected: {idProofFile.name}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
             </Grid>
           </Grid>
         </DialogContent>

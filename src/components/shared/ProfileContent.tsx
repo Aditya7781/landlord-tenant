@@ -430,6 +430,31 @@ export default function ProfileContent({ role }: ProfileContentProps) {
                   {formData.phone}
                 </Typography>
               </Box>
+              {role === "user" && userData?.status && (
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                  >
+                    Status
+                  </Typography>
+                  <Chip
+                    label={userData.status.charAt(0).toUpperCase() + userData.status.slice(1)}
+                    size="small"
+                    color={
+                      userData.status === "active" ? "success" :
+                      userData.status === "pending" ? "warning" :
+                      userData.status === "inactive" ? "error" : "default"
+                    }
+                    sx={{
+                      height: 24,
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                    }}
+                  />
+                </Box>
+              )}
             </Stack>
           </Paper>
         </Grid>

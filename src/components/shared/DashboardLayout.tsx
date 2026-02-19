@@ -33,6 +33,14 @@ import { clearSession, validateSession, checkSessionValidity, setupSessionRefres
 
 const drawerWidth = 280;
 
+const getCookieValue = (name: string): string | null => {
+  if (typeof document === "undefined") return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift() || null;
+  return null;
+};
+
 interface MenuItemType {
   text: string;
   icon: React.ReactNode;
@@ -61,7 +69,33 @@ export default function DashboardLayout({
   // ✅ Mobile-only drawer state (NO syncing, NO effects)
   const [open, setOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [userInitial, setUserInitial] = useState<string>("U");
   const backGuardRef = React.useRef(false);
+
+  // Fetch user data for initial
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const token = getCookieValue("session_token");
+      if (!token) return;
+
+      try {
+        const response = await fetch("/api/my?query=me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        if (data.firstName) {
+          setUserInitial(data.firstName[0].toUpperCase());
+        } else if (data.emailAddress || data.email) {
+          setUserInitial((data.emailAddress || data.email)[0].toUpperCase());
+        }
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   // Validate session on mount
   useEffect(() => {
@@ -342,7 +376,7 @@ export default function DashboardLayout({
             <Tooltip title="Account settings">
               <IconButton onClick={handleMenuOpen} size="small" sx={{ ml: 2 }}>
                 <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main" }}>
-                  AD
+                  {pathname.startsWith("/admin") ? "A" : userInitial}
                 </Avatar>
               </IconButton>
             </Tooltip>

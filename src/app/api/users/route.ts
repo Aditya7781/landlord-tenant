@@ -157,6 +157,9 @@ export async function PUT(request: NextRequest) {
     const collegeOffice = formData.get('collegeOffice') as string;
     const purposeOfLiving = formData.get('purposeOfLiving') as string;
     const profileImage = formData.get('profileImage') as File;
+    const aadharFrontImage = formData.get('aadharFront') as File;
+    const aadharBackImage = formData.get('aadharBack') as File;
+    const idProofImage = formData.get('idProof') as File;
 
     if (!email || !status) {
       return NextResponse.json(
@@ -166,11 +169,13 @@ export async function PUT(request: NextRequest) {
     }
 
     let profileImageUrl = null;
+    let aadharFrontUrl = null;
+    let aadharBackUrl = null;
+    let idProofUrl = null;
 
     // Handle profile image upload if provided
     if (profileImage && profileImage.size > 0) {
       try {
-        console.log('Starting image upload for:', email);
         
         // Get presigned URL from API
         const presignedResponse = await fetch(PRESIGNED_IMAGE_API, {
@@ -192,7 +197,6 @@ export async function PUT(request: NextRequest) {
         }
 
         const presignedData = await presignedResponse.json();
-        console.log('Presigned URL received:', presignedData);
         
         // Upload image to S3 using presigned URL
         const uploadResponse = await fetch(presignedData.upload.uploadUrl, {
@@ -217,13 +221,177 @@ export async function PUT(request: NextRequest) {
           throw new Error(`Failed to upload image: ${uploadResponse.status} ${uploadResponse.statusText}`);
         }
 
-        console.log('Upload successful, URL:', presignedData.upload.publicUrl);
         profileImageUrl = presignedData.upload.publicUrl;
       } catch (error) {
         console.error('Image upload failed, continuing with other fields:', error);
         // Don't fail the entire operation if image upload fails
         // Just log the error and continue without updating the image
         profileImageUrl = null;
+      }
+    }
+
+    // Handle aadharFront document upload if provided
+    if (aadharFrontImage && aadharFrontImage.size > 0) {
+      try {
+        
+        // Get presigned URL from API
+        const presignedResponse = await fetch(PRESIGNED_IMAGE_API, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email,
+            documentField: 'aadharFront',
+          }),
+        });
+
+        if (!presignedResponse.ok) {
+          const errorData = await presignedResponse.text();
+          console.error('Presigned URL Error for aadharFront:', errorData);
+          throw new Error(`Failed to get presigned URL: ${presignedResponse.status}`);
+        }
+
+        const presignedData = await presignedResponse.json();
+        
+        // Upload image to S3 using presigned URL
+        const uploadResponse = await fetch(presignedData.upload.uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': aadharFrontImage.type,
+          },
+          body: aadharFrontImage,
+          mode: 'cors',
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error('S3 Upload Error for aadharFront:', {
+            status: uploadResponse.status,
+            statusText: uploadResponse.statusText,
+            body: errorText,
+            url: presignedData.upload.uploadUrl,
+            contentType: aadharFrontImage.type,
+            fileSize: aadharFrontImage.size
+          });
+          throw new Error(`Failed to upload aadharFront: ${uploadResponse.status} ${uploadResponse.statusText}`);
+        }
+
+        aadharFrontUrl = presignedData.upload.publicUrl;
+      } catch (error) {
+        console.error('AadharFront upload failed, continuing with other fields:', error);
+        aadharFrontUrl = null;
+      }
+    }
+
+    // Handle aadharBack document upload if provided
+    if (aadharBackImage && aadharBackImage.size > 0) {
+      try {
+        
+        // Get presigned URL from API
+        const presignedResponse = await fetch(PRESIGNED_IMAGE_API, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email,
+            documentField: 'aadharBack',
+          }),
+        });
+
+        if (!presignedResponse.ok) {
+          const errorData = await presignedResponse.text();
+          console.error('Presigned URL Error for aadharBack:', errorData);
+          throw new Error(`Failed to get presigned URL: ${presignedResponse.status}`);
+        }
+
+        const presignedData = await presignedResponse.json();
+        
+        // Upload image to S3 using presigned URL
+        const uploadResponse = await fetch(presignedData.upload.uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': aadharBackImage.type,
+          },
+          body: aadharBackImage,
+          mode: 'cors',
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error('S3 Upload Error for aadharBack:', {
+            status: uploadResponse.status,
+            statusText: uploadResponse.statusText,
+            body: errorText,
+            url: presignedData.upload.uploadUrl,
+            contentType: aadharBackImage.type,
+            fileSize: aadharBackImage.size
+          });
+          throw new Error(`Failed to upload aadharBack: ${uploadResponse.status} ${uploadResponse.statusText}`);
+        }
+
+        aadharBackUrl = presignedData.upload.publicUrl;
+      } catch (error) {
+        console.error('AadharBack upload failed, continuing with other fields:', error);
+        aadharBackUrl = null;
+      }
+    }
+
+    // Handle idProof document upload if provided
+    if (idProofImage && idProofImage.size > 0) {
+      try {
+        
+        // Get presigned URL from API
+        const presignedResponse = await fetch(PRESIGNED_IMAGE_API, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email,
+            documentField: 'idProof',
+          }),
+        });
+
+        if (!presignedResponse.ok) {
+          const errorData = await presignedResponse.text();
+          console.error('Presigned URL Error for idProof:', errorData);
+          throw new Error(`Failed to get presigned URL: ${presignedResponse.status}`);
+        }
+
+        const presignedData = await presignedResponse.json();
+        
+        // Upload image to S3 using presigned URL
+        const uploadResponse = await fetch(presignedData.upload.uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': idProofImage.type,
+          },
+          body: idProofImage,
+          mode: 'cors',
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error('S3 Upload Error for idProof:', {
+            status: uploadResponse.status,
+            statusText: uploadResponse.statusText,
+            body: errorText,
+            url: presignedData.upload.uploadUrl,
+            contentType: idProofImage.type,
+            fileSize: idProofImage.size
+          });
+          throw new Error(`Failed to upload idProof: ${uploadResponse.status} ${uploadResponse.statusText}`);
+        }
+
+        idProofUrl = presignedData.upload.publicUrl;
+      } catch (error) {
+        console.error('IdProof upload failed, continuing with other fields:', error);
+        idProofUrl = null;
       }
     }
 
@@ -246,10 +414,20 @@ export async function PUT(request: NextRequest) {
     if (highestQualification) updateData.highestQualification = highestQualification;
     if (collegeOffice) updateData.collegeOffice = collegeOffice;
     if (purposeOfLiving) updateData.purposeOfLiving = purposeOfLiving;
-    if (profileImageUrl) updateData.documents = { 
-      ...updateData.documents,
-      profilePhoto: profileImageUrl 
-    };
+    
+    // Add document URLs if any were uploaded
+    const documents: any = {};
+    if (profileImageUrl) documents.profilePhoto = profileImageUrl;
+    if (aadharFrontUrl) documents.aadharFront = aadharFrontUrl;
+    if (aadharBackUrl) documents.aadharBack = aadharBackUrl;
+    if (idProofUrl) documents.idProof = idProofUrl;
+    
+    if (Object.keys(documents).length > 0) {
+      updateData.documents = {
+        ...updateData.documents,
+        ...documents
+      };
+    }
 
     const response = await fetch(UPDATE_STATUS_API, {
       method: "PUT",
